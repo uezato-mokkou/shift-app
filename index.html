@@ -56,8 +56,9 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
 /* データセル */
 .dc{min-width:var(--dw);width:var(--dw);height:48px;border:1px solid var(--bd);text-align:center;vertical-align:middle;font-size:1.2rem;font-weight:900;background:white;cursor:pointer;transition:filter 0.12s;user-select:none;position:relative;color:var(--dark);}
 .dc.sat{background:var(--sat);}.dc.sun{background:var(--sun);}
-/* 「休」は背景白、文字は緑 */
-.dc.kyuu{background:transparent!important;color:var(--green)!important;}
+/* 「休」「出」は背景透明・文字大きめ */
+.dc.kyuu{background:transparent!important;color:var(--green)!important;font-size:1.5rem;}
+.dc.shuts{background:transparent!important;font-size:1.5rem;}
 .dc.adj{background:var(--adjBg)!important;color:var(--adj)!important;}
 .dc.noclick{cursor:default;}
 .dc:not(.noclick):active{filter:brightness(0.88);}
@@ -569,15 +570,16 @@ function saveShift(){
 
 // ─── セル表示ヘルパー ───
 function dcBg(y,m,d,v){
-  if(v==='kyuu')return '#ffffff';   // 「休」：白背景
-  if(v==='adj')return 'var(--adjl)';// 調整休：紫背景
+  if(v==='kyuu')return 'transparent'; // 「休」：背景透明
+  if(v==='adj')return 'var(--adjl)';  // 調整休：紫背景
+  if(v==='出')return 'transparent';   // 「出」：背景透明
   if(isSat(y,m,d))return 'var(--sat)';
   if(isHol(y,m,d))return 'var(--sun)';
   return '#ffffff';
 }
 function dcText(v){if(v==='kyuu'||v==='adj')return '休';return v||'';}
 function dcClass(v,y,m,d){
-  let c='dc ';c+=v==='kyuu'?'kyuu ':v==='adj'?'adj ':'';
+  let c='dc ';c+=v==='kyuu'?'kyuu ':v==='adj'?'adj ':v==='出'?'shuts ':'';
   c+=isSat(y,m,d)?'sat ':isHol(y,m,d)?'sun ':'';return c.trim();
 }
 function dcColor(v){
@@ -673,8 +675,8 @@ function drawInput(y,m,wid,fname){
 // ─── 全体シフト ───
 // 全体シフト用：「休」「調整休」を区別なく同じスタイルで表示
 function chiefCellBg(y,m,d,v){
-  // 「休」系は全て白背景
-  if(v==='kyuu'||v==='adj')return '#ffffff';
+  if(v==='kyuu'||v==='adj')return 'transparent';
+  if(v==='出')return 'transparent';
   if(isSat(y,m,d))return 'var(--sat)';
   if(isHol(y,m,d))return 'var(--sun)';
   return '#ffffff';
@@ -732,7 +734,7 @@ function drawAdjTable(){
       const v=SD[y][m][nm]?SD[y][m][nm][d]||'':'';
       const bg=dcBg(y,m,d,v);const col=dcColor(v);
       // noclick を付けない（クリック必須）
-      const cls='dc '+(v==='kyuu'?'kyuu ':v==='adj'?'adj ':'')+(isSat(y,m,d)?'sat ':isHol(y,m,d)?'sun ':'');
+      const cls='dc '+(v==='kyuu'?'kyuu ':v==='adj'?'adj ':v==='出'?'shuts ':'')+(isSat(y,m,d)?'sat ':isHol(y,m,d)?'sun ':'');
       h+=`<td class="${cls.trim()}" style="background:${bg};${col};cursor:pointer;" data-n="${nm}" data-d="${d}" data-y="${y}" data-m="${m}">${dcText(v)}</td>`;
     }
     h+='</tr>';
