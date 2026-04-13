@@ -570,9 +570,12 @@ function saveShift(){
 
 // ─── セル表示ヘルパー ───
 function dcBg(y,m,d,v){
-  if(v==='kyuu')return 'transparent'; // 「休」：背景透明
-  if(v==='adj')return 'var(--adjl)';  // 調整休：紫背景
-  if(v==='出')return 'transparent';   // 「出」：背景透明
+  if(v==='kyuu'||v==='出'){
+    if(isSat(y,m,d))return 'var(--sat)';  // 土曜色を維持
+    if(isHol(y,m,d))return 'var(--sun)';  // 日祝色を維持
+    return 'transparent';
+  }
+  if(v==='adj')return 'var(--adjl)';
   if(isSat(y,m,d))return 'var(--sat)';
   if(isHol(y,m,d))return 'var(--sun)';
   return '#ffffff';
@@ -675,8 +678,12 @@ function drawInput(y,m,wid,fname){
 // ─── 全体シフト ───
 // 全体シフト用：「休」「調整休」を区別なく同じスタイルで表示
 function chiefCellBg(y,m,d,v){
-  if(v==='kyuu'||v==='adj')return 'transparent';
-  if(v==='出')return 'transparent';
+  if(v==='kyuu'||v==='出'){
+    if(isSat(y,m,d))return 'var(--sat)';
+    if(isHol(y,m,d))return 'var(--sun)';
+    return 'transparent';
+  }
+  if(v==='adj')return 'var(--adjl)';
   if(isSat(y,m,d))return 'var(--sat)';
   if(isHol(y,m,d))return 'var(--sun)';
   return '#ffffff';
