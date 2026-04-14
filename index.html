@@ -59,7 +59,7 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
 /* 「休」「出」は背景透明・文字大きめ（!importantなしでinline styleが優先される）*/
 .dc.kyuu{background:transparent;color:var(--green)!important;font-size:1.5rem;}
 .dc.shuts{background:transparent;font-size:1.5rem;}
-.dc.adj{background:var(--adjBg)!important;color:var(--adj)!important;}
+.dc.adj{background:var(--adjBg);color:var(--adj)!important;}
 .dc.noclick{cursor:default;}
 .dc:not(.noclick):active{filter:brightness(0.88);}
 /* 出人員行 */
@@ -395,7 +395,7 @@ function p2(n){return String(n).padStart(2,'0');}
 let STAFF=['仲松','大山','大泊','野底','西村','植田','具志堅','運道'];
 let BATH=['狩俣'];
 function ALL(){return[...STAFF,...BATH];}
-let CY=2026,CM=4,selName='',isAdmin=false,deadlineClosed=false;
+let CY=2026,CM=4,selName='',isAdmin=localStorage.getItem('shift_admin_logged')==='true',deadlineClosed=false;
 let ocrParsed=null,ocrB64='',ocrMime='';
 const SD={},KD={},BIKO={},CUSTOM={},LOG=[];
 
@@ -508,8 +508,11 @@ function showAdminTab(btn){
   if(isAdmin)showAMain();else{document.getElementById('aln-view').style.display='block';document.getElementById('amain').style.display='none';}
 }
 function doLogin(){
-  if(document.getElementById('apw').value==='chief2026'){isAdmin=true;showAMain();showToast('✅ 管理者ログイン成功');}
-  else showToast('❌ パスワードが違います');
+  if(document.getElementById('apw').value==='chief2026'){
+    isAdmin=true;
+    localStorage.setItem('shift_admin_logged','true');
+    showAMain();showToast('✅ 管理者ログイン成功');
+  } else showToast('❌ パスワードが違います');
 }
 function showAMain(){
   document.getElementById('aln-view').style.display='none';
@@ -575,7 +578,11 @@ function dcBg(y,m,d,v){
     if(isHol(y,m,d))return 'var(--sun)';  // 日祝色を維持
     return 'transparent';
   }
-  if(v==='adj')return 'var(--adjl)';
+  if(v==='adj'){
+    if(isSat(y,m,d))return 'var(--sat)';  // 土曜色を維持
+    if(isHol(y,m,d))return 'var(--sun)';  // 日祝色を維持
+    return 'var(--adjl)';
+  }
   if(isSat(y,m,d))return 'var(--sat)';
   if(isHol(y,m,d))return 'var(--sun)';
   return '#ffffff';
@@ -633,7 +640,7 @@ function buildBathRows(y,m,n){
   let h='';
   BATH.forEach(bsnm=>{
     const bc=cntBath(y,m,bsnm);
-    h+=`<tr class="rkar"><td class="fn">${bsnm}</td><td class="fk"><span class="kc ${bc===0?'ok':bc<=8?'red':'ok'}">${bc===0?'':bc}</span></td>`;
+    h+=`<tr class="rkar"><td class="fn">${bsnm}</td><td class="fk"><span class="kc ${bc===0?'ok':bc<=7?'red':'ok'}">${bc===0?'':bc}</span></td>`;
     for(let d=1;d<=n;d++){
       const v=SD[y]&&SD[y][m]&&SD[y][m][bsnm]?SD[y][m][bsnm][d]||'':'';
       const bg=v?dcBg(y,m,d,v):(isSat(y,m,d)?'var(--sat)':isHol(y,m,d)?'var(--sun)':'#fff');
@@ -654,7 +661,7 @@ function drawInput(y,m,wid,fname){
   const cnt=isBath?cntBath(y,m,fname):cntKyuu(y,m,fname);
   const locked=isLocked()&&!isAdmin;
   let h=buildHdr(y,m,n,busy);
-  h+=`<tr><td class="fn">${fname}</td><td class="fk"><span class="kc ${cnt<=8?'red':'ok'}">${cnt}</span></td>`;
+  h+=`<tr><td class="fn">${fname}</td><td class="fk"><span class="kc ${cnt<=7?'red':'ok'}">${cnt}</span></td>`;
   for(let d=1;d<=n;d++){
     const v=SD[y][m][fname]?SD[y][m][fname][d]||'':'';
     const bg=dcBg(y,m,d,v);const col=dcColor(v);
@@ -683,7 +690,11 @@ function chiefCellBg(y,m,d,v){
     if(isHol(y,m,d))return 'var(--sun)';
     return 'transparent';
   }
-  if(v==='adj')return 'var(--adjl)';
+  if(v==='adj'){
+    if(isSat(y,m,d))return 'var(--sat)';
+    if(isHol(y,m,d))return 'var(--sun)';
+    return 'var(--adjl)';
+  }
   if(isSat(y,m,d))return 'var(--sat)';
   if(isHol(y,m,d))return 'var(--sun)';
   return '#ffffff';
@@ -736,7 +747,7 @@ function drawAdjTable(){
   let h=buildHdr(y,m,n,busy);
   STAFF.forEach(nm=>{
     const cnt=cntKyuu(y,m,nm);
-    h+=`<tr><td class="fn">${nm}</td><td class="fk"><span class="kc ${cnt<=8?'red':'ok'}">${cnt||''}</span></td>`;
+    h+=`<tr><td class="fn">${nm}</td><td class="fk"><span class="kc ${cnt<=7?'red':'ok'}">${cnt||''}</span></td>`;
     for(let d=1;d<=n;d++){
       const v=SD[y][m][nm]?SD[y][m][nm][d]||'':'';
       const bg=dcBg(y,m,d,v);const col=dcColor(v);
