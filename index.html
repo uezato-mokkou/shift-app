@@ -49,10 +49,10 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
 /* 固定列：休み数 */
 .fk{position:sticky;left:var(--nw);z-index:12;background:#5a7890;color:white;min-width:var(--kw);width:var(--kw);text-align:center;font-size:0.7rem;border:1px solid #6a88a0;vertical-align:middle;font-weight:700;}
 /* 日付ヘッダー */
-.thd{min-width:var(--dw);width:var(--dw);padding:7px 2px 3px;font-weight:900;font-size:0.88rem;text-align:center;border:1px solid #8aaabb;background:#a0b8c8;color:white;position:relative;vertical-align:bottom;}
+.thd{min-width:var(--dw);width:var(--dw);padding:7px 2px 3px;font-weight:900;font-size:0.88rem;text-align:center;border:1px solid #5a7890;background:#5a7890;color:white;position:relative;vertical-align:bottom;}
 .thd.sat{background:#3a7aa0;border-color:#3a7aa0;}.thd.sun{background:#c04040;border-color:#c04040;}
-.thw{min-width:var(--dw);width:var(--dw);padding:2px 2px 6px;font-size:0.75rem;text-align:center;border:1px solid #8aaabb;background:#a0b8c8;color:#eef4f8;}
-.thw.sat{background:#3a7aa0;border-color:#3a7aa0;color:#c0e4f4;}.thw.sun{background:#c04040;border-color:#c04040;color:#ffc8c0;}
+.thw{min-width:var(--dw);width:var(--dw);padding:2px 2px 6px;font-size:0.75rem;text-align:center;border:1px solid #5a7890;background:#5a7890;color:#d0e8f4;}
+.thw.sat{color:#c0e4f4;}.thw.sun{color:#ffc8c0;}
 /* データセル */
 .dc{min-width:var(--dw);width:var(--dw);height:48px;border:1px solid var(--bd);text-align:center;vertical-align:middle;font-size:1.2rem;font-weight:900;background:white;cursor:pointer;transition:filter 0.12s;user-select:none;position:relative;color:var(--dark);}
 .dc.sat{background:var(--sat);}.dc.sun{background:var(--sun);}
@@ -87,7 +87,7 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
 .biko-text{color:#1c2833;font-size:0.85rem;font-weight:700;writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;line-height:1.1;max-height:106px;overflow:hidden;display:inline-block;}
 /* 繁忙赤丸：日付+曜日のセル範囲内にぴったり収まる楕円 */
 .thd{overflow:visible;}
-.busy-ring{position:absolute;top:0;left:50%;transform:translateX(-50%);width:38px;height:44px;border:2.5px solid #e74c3c;border-radius:19px;pointer-events:none;z-index:5;}
+.busy-ring{position:absolute;top:3px;left:50%;transform:translateX(-50%);width:40px;height:58px;border:2.5px solid #e74c3c;border-radius:20px;pointer-events:none;z-index:5;}
 /* 休み日数（fk列＝紺背景に白文字） */
 .kc{font-size:1.15rem;font-weight:900;line-height:1;}
 .kc.red{color:#ff4444;}   /* 7日以下で赤 */
@@ -203,7 +203,7 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
   .thw{font-size:0.56rem;padding:1px;}
   .kc{font-size:0.88rem;font-weight:600;}
   .kc.red{color:#ff2222!important;}
-  .busy-ring{width:26px;height:30px;border-width:1.5px;border-radius:13px;top:0;}
+  .busy-ring{width:28px;height:38px;border-width:1.5px;border-radius:14px;top:2px;}
 }
 </style>
 </head>
@@ -304,7 +304,7 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
       <h3>⚙️ 設定</h3>
       <div class="sw-row">
         <span class="sw-label">休み希望の受付を締め切る</span>
-        <label class="sw"><input type="checkbox" id="sw-dl" onchange="deadlineClosed=this.checked;showToast(this.checked?'🔒 締め切りました':'🔓 再開しました')"><span class="sw-sl"></span></label>
+        <label class="sw"><input type="checkbox" id="sw-dl" onchange="deadlineClosed=this.checked;saveToCloud('deadline_closed',this.checked);renderNames();showToast(this.checked?'🔒 締め切りました':'🔓 再開しました')"><span class="sw-sl"></span></label>
       </div>
       <div class="sw-row" style="margin-top:2px;">
         <span class="sw-label">現在操作中の月：<strong id="acm">2026年4月</strong></span>
@@ -575,11 +575,28 @@ function changeCurMonth(){
 // ─── 名前選択 ───
 function renderNames(){
   const g=document.getElementById('ngrid');g.innerHTML='';
-  ALL().forEach(n=>{
-    const b=document.createElement('button');b.className='nbtn';b.textContent=n;
-    b.onclick=()=>{document.querySelectorAll('.nbtn').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');selName=n;document.getElementById('sbtn').classList.add('vis');};
-    g.appendChild(b);
-  });
+  // 締め切り中：ロックバナー＋ボタン無効化
+  if(deadlineClosed){
+    const banner=document.createElement('div');
+    banner.className='locked-banner';
+    banner.style.cssText='grid-column:1/-1;margin-bottom:6px;';
+    banner.textContent='🔒 休み希望は締め切りました。';
+    g.appendChild(banner);
+    ALL().forEach(n=>{
+      const b=document.createElement('button');b.className='nbtn';b.textContent=n;
+      b.disabled=true;b.style.cssText='opacity:0.45;cursor:not-allowed;pointer-events:none;';
+      g.appendChild(b);
+    });
+  } else {
+    // 名前タップで直接シフト入力画面へ
+    ALL().forEach(n=>{
+      const b=document.createElement('button');b.className='nbtn';b.textContent=n;
+      b.onclick=()=>{selName=n;startInput();};
+      g.appendChild(b);
+    });
+  }
+  // 「シフトを入力する」ボタンは不要なので非表示
+  const sbtn=document.getElementById('sbtn');if(sbtn)sbtn.style.display='none';
 }
 function isLocked(){return deadlineClosed||(new Date().getDate()>20);}
 function startInput(){
@@ -1191,9 +1208,16 @@ renderNames();initM(CY,CM);
   const loaded=await loadAllFromCloud();
   if(loaded){
     ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
-    renderNames();
     showToast('☁️ クラウドからデータを読み込みました');
   }
+  // 締め切り状態をクラウドから取得
+  const dc=await loadFromCloud('deadline_closed');
+  if(dc!==null){
+    deadlineClosed=!!dc;
+    const cb=document.getElementById('sw-dl');
+    if(cb)cb.checked=deadlineClosed;
+  }
+  renderNames();
   drawChief(CY,CM,'ctw',false);
   drawPast();
 })();
