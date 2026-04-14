@@ -165,29 +165,32 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
 @media print{
   @page{size:A4 landscape;margin:10mm 8mm;}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;}
-  :root{--nw:56px;--kw:26px;--dw:28px;}
+  /* A4横幅(297-16=281mm≈1063px)に合わせて列幅を設定 */
+  /* 30日: 68+28+30×32=1056px  31日: 68+28+31×32=1088px */
+  :root{--nw:68px;--kw:28px;--dw:32px;}
   header,.tab-nav,.abar,.lgd,.msel,.deadline-notice,.locked-banner,#ti,#tp,#ta,.stitle{display:none!important;}
   #tc{display:block!important;}
   body{background:white;margin:0;padding:0;}
   .content{padding:0;}
   /* 印刷ヘッダー表示 */
   #print-hdr{display:flex!important;align-items:baseline;margin-bottom:6px;}
-  /* テーブル：transform-originを設定してJSでscale適用 */
-  .swrap{box-shadow:none;border:none;overflow:visible;width:max-content!important;max-width:none!important;border-radius:0;display:block;transform-origin:top left;}
+  .swrap{box-shadow:none;border:none;overflow:visible;width:max-content!important;max-width:none!important;border-radius:0;display:block;}
   /* sticky解除（ずれ防止） */
-  .fn{position:relative!important;left:auto!important;font-size:0.66rem;}
-  .fk{position:relative!important;left:auto!important;font-size:0.56rem;}
-  /* 文字を細く */
-  .dc{height:30px;font-size:0.78rem;font-weight:400;}
+  .fn{position:relative!important;left:auto!important;font-size:0.72rem;}
+  .fk{position:relative!important;left:auto!important;font-size:0.62rem;}
+  /* 枠線を濃く表示 */
+  .dc{height:30px;font-size:0.84rem;font-weight:400;border:1px solid #aaa!important;}
   .dc.kyuu{font-weight:400;}
   .dc.shuts{font-weight:400;}
-  .rout .dc{font-weight:500;}
-  .dck{height:22px;font-size:0.68rem;font-weight:400;}
-  .dcb{height:64px;}
+  .rout .dc{font-weight:500;border:1px solid #aaa!important;}
+  .dck{height:22px;font-size:0.72rem;font-weight:400;border:1px solid #aaa!important;}
+  .dcb{height:64px;border:1px solid #aaa!important;}
   .hol-name,.biko-text{font-size:0.66rem;max-height:62px;}
-  .thd{font-size:0.58rem;padding:3px 1px 2px;}
-  .thw{font-size:0.52rem;padding:1px;}
-  .kc{font-size:0.82rem;font-weight:600;}
+  .thd{font-size:0.64rem;padding:3px 1px 2px;}
+  .thw{font-size:0.56rem;padding:1px;}
+  .kc{font-size:0.88rem;font-weight:600;}
+  /* 印刷でも休日数7以下を赤文字 */
+  .kc.red{color:#e03030!important;}
   .busy-ring{width:22px;height:22px;border-width:2px;}
 }
 </style>
@@ -1132,18 +1135,9 @@ function showToast(msg){
   setTimeout(()=>t.style.transform='translateX(-50%) translateY(70px)',2800);
 }
 
-// ─── 印刷時A4横幅にスケール ───
-window.addEventListener('beforeprint',function(){
-  const sw=document.querySelector('#ctw .swrap');if(!sw)return;
-  sw.style.transform='scale(1)';
-  const tW=sw.scrollWidth;if(!tW)return;
-  // A4 landscape content width: (297-16)mm=281mm → 96dpi ≈ 1063px
-  const pageW=Math.round(281*96/25.4);
-  const scale=pageW/tW;
-  sw.style.transform='scale('+Math.min(scale,2).toFixed(4)+')';
-});
+// ─── 印刷後リセット ───
 window.addEventListener('afterprint',function(){
-  const sw=document.querySelector('#ctw .swrap');if(sw)sw.style.transform='';
+  const sw=document.querySelector('#ctw .swrap');if(sw)sw.style.zoom='';
 });
 // ─── 初期化 ───
 renderNames();initM(CY,CM);
