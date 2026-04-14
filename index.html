@@ -163,24 +163,28 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
 .mbdy{overflow:hidden;flex:1;position:relative;background:#f0f4f8;}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(70px);background:#1c2833;color:white;padding:10px 20px;border-radius:24px;font-size:0.82rem;font-weight:600;box-shadow:0 4px 18px rgba(0,0,0,0.25);transition:transform 0.3s ease;z-index:999;white-space:nowrap;}
 @media print{
-  @page{size:A4 landscape;margin:8mm;}
+  @page{size:A4 landscape;margin:10mm 8mm;}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;}
-  :root{--nw:58px;--kw:28px;--dw:30px;}
+  :root{--nw:56px;--kw:26px;--dw:28px;}
   header,.tab-nav,.abar,.lgd,.msel,.deadline-notice,.locked-banner,#ti,#tp,#ta,.stitle{display:none!important;}
-  #tc{display:block!important;}
-  body{background:white;}
+  #tc{display:block!important;text-align:center;}
+  body{background:white;margin:0;padding:0;}
   .content{padding:0;}
-  .swrap{box-shadow:none;border:none;overflow:visible;width:auto!important;max-width:none!important;border-radius:0;}
-  .fn{position:relative!important;font-size:0.68rem;}
-  .fk{position:relative!important;font-size:0.58rem;}
-  .dc{height:32px;font-size:0.82rem;}
-  .dck{height:24px;font-size:0.72rem;}
-  .dcb{height:68px;}
-  .hol-name,.biko-text{font-size:0.7rem;max-height:66px;}
-  .thd{font-size:0.6rem;padding:4px 1px 2px;}
-  .thw{font-size:0.55rem;padding:1px;}
-  .kc{font-size:0.88rem;}
-  .busy-ring{width:24px;height:24px;border-width:2px;}
+  /* 印刷ヘッダー表示 */
+  #print-hdr{display:flex!important;align-items:baseline;margin-bottom:6px;text-align:left;}
+  /* テーブルをセンタリング */
+  .swrap{box-shadow:none;border:none;overflow:visible;width:auto!important;max-width:none!important;border-radius:0;display:inline-block;text-align:left;}
+  /* sticky解除（ずれ防止） */
+  .fn{position:relative!important;left:auto!important;font-size:0.66rem;}
+  .fk{position:relative!important;left:auto!important;font-size:0.56rem;}
+  .dc{height:30px;font-size:0.78rem;}
+  .dck{height:22px;font-size:0.68rem;}
+  .dcb{height:64px;}
+  .hol-name,.biko-text{font-size:0.66rem;max-height:62px;}
+  .thd{font-size:0.58rem;padding:3px 1px 2px;}
+  .thw{font-size:0.52rem;padding:1px;}
+  .kc{font-size:0.82rem;}
+  .busy-ring{width:22px;height:22px;border-width:2px;}
 }
 </style>
 </head>
@@ -199,6 +203,11 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
 
 <!-- シフト表 -->
 <div id="tc" class="panel active">
+  <!-- 印刷専用ヘッダー（画面では非表示） -->
+  <div id="print-hdr" style="display:none;">
+    <span id="print-title" style="font-size:1rem;font-weight:700;font-family:'Shippori Mincho',serif;"></span>
+    <span style="font-size:0.88rem;font-weight:600;color:#444;margin-left:20px;">ホテルグランビュー石垣 The First</span>
+  </div>
   <div class="stitle">
     <div><div class="sh">シフト表（<span id="clbl">4月</span>）</div><div style="font-size:.72rem;color:var(--mid);margin-top:3px;">ホテルグランビュー石垣 The First</div></div>
     <div style="display:flex;gap:7px;">
@@ -534,6 +543,7 @@ function changeCurMonth(){
   document.getElementById('ns-mt').textContent=CM+'月のシフト';
   document.getElementById('clbl').textContent=CM+'月';
   if(document.getElementById('acm'))document.getElementById('acm').textContent=CY+'年'+CM+'月';
+  const _pt=document.getElementById('print-title');if(_pt)_pt.textContent='シフト表（'+CM+'月）';
   if(document.getElementById('tc').classList.contains('active'))drawChief(CY,CM,'ctw',false);
   if(document.getElementById('ti').classList.contains('active')&&selName)drawInput(CY,CM,'itw',selName);
   if(document.getElementById('ta').classList.contains('active')&&isAdmin){drawKI();drawBikoInput();drawAdjTable();}
@@ -1120,6 +1130,7 @@ function showToast(msg){
 
 // ─── 初期化 ───
 renderNames();initM(CY,CM);
+{const _pt=document.getElementById('print-title');if(_pt)_pt.textContent='シフト表（'+CM+'月）';}
 // クラウドからデータ読み込み後に描画
 (async()=>{
   const loaded=await loadAllFromCloud();
