@@ -85,9 +85,9 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
 /* writing-mode:vertical-rl + white-space:nowrap で1文字ずつ縦に並ぶ */
 .hol-name{color:#c0392b;font-size:0.85rem;font-weight:900;writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;line-height:1.1;max-height:106px;overflow:hidden;display:inline-block;}
 .biko-text{color:#1c2833;font-size:0.85rem;font-weight:700;writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;line-height:1.1;max-height:106px;overflow:hidden;display:inline-block;}
-/* 繁忙赤丸：日付+曜日行を楕円で囲む */
+/* 繁忙赤丸：日付+曜日行を楕円で囲む（テキストより大きく余白確保） */
 .thd{overflow:visible;}
-.busy-ring{position:absolute;top:0;left:50%;transform:translateX(-50%);width:28px;height:50px;border:2.5px solid #e74c3c;border-radius:14px;pointer-events:none;z-index:5;}
+.busy-ring{position:absolute;top:-5px;left:50%;transform:translateX(-50%);width:40px;height:62px;border:2.5px solid #e74c3c;border-radius:20px;pointer-events:none;z-index:5;}
 /* 日曜（赤背景）では白い枠で視認性を確保 */
 .thd.sun .busy-ring{border-color:rgba(255,255,255,0.9);}
 /* 休み日数（fk列＝紺背景に白文字） */
@@ -174,8 +174,11 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
   #tc{display:block!important;text-align:center;}
   body{background:white;margin:0;padding:0;}
   .content{padding:0;}
-  /* 印刷ヘッダー：位置を下に調整 */
-  #print-hdr{display:flex!important;align-items:baseline;margin-bottom:6px;margin-top:28mm;}
+  /* 印刷ヘッダー：位置調整（13mm下） */
+  #print-hdr{display:flex!important;align-items:baseline;margin-bottom:6px;margin-top:13mm;}
+  /* 1ページに収める */
+  #tc,#print-wrap,.stbl{page-break-inside:avoid!important;break-inside:avoid!important;}
+  #tc{page-break-after:avoid!important;break-after:avoid!important;}
   /* テーブルをセンター配置 */
   #print-wrap{display:inline-block;text-align:left;}
   .swrap{box-shadow:none;border:none;overflow:visible;width:max-content!important;max-width:none!important;border-radius:0;display:block;}
@@ -202,7 +205,7 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
   .thw{font-size:0.56rem;padding:1px;}
   .kc{font-size:0.88rem;font-weight:600;}
   .kc.red{color:#ff2222!important;}
-  .busy-ring{width:20px;height:20px;border-width:1.5px;}
+  .busy-ring{width:28px;height:44px;border-width:1.5px;border-radius:14px;top:-3px;}
 }
 </style>
 </head>
