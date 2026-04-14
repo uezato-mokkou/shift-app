@@ -49,10 +49,10 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
 /* 固定列：休み数 */
 .fk{position:sticky;left:var(--nw);z-index:12;background:#5a7890;color:white;min-width:var(--kw);width:var(--kw);text-align:center;font-size:0.7rem;border:1px solid #6a88a0;vertical-align:middle;font-weight:700;}
 /* 日付ヘッダー */
-.thd{min-width:var(--dw);width:var(--dw);padding:7px 2px 3px;font-weight:900;font-size:0.88rem;text-align:center;border:1px solid #5a7890;background:#5a7890;color:white;position:relative;vertical-align:bottom;}
-.thd.sat{background:#3a7aa0;}.thd.sun{background:#c04040;}
-.thw{min-width:var(--dw);width:var(--dw);padding:2px 2px 6px;font-size:0.75rem;text-align:center;border:1px solid #5a7890;background:#5a7890;color:#d0e8f4;}
-.thw.sat{color:#c0e4f4;}.thw.sun{color:#ffc8c0;}
+.thd{min-width:var(--dw);width:var(--dw);padding:7px 2px 3px;font-weight:900;font-size:0.88rem;text-align:center;border:1px solid #8aaabb;background:#a0b8c8;color:white;position:relative;vertical-align:bottom;}
+.thd.sat{background:#3a7aa0;border-color:#3a7aa0;}.thd.sun{background:#c04040;border-color:#c04040;}
+.thw{min-width:var(--dw);width:var(--dw);padding:2px 2px 6px;font-size:0.75rem;text-align:center;border:1px solid #8aaabb;background:#a0b8c8;color:#eef4f8;}
+.thw.sat{background:#3a7aa0;border-color:#3a7aa0;color:#c0e4f4;}.thw.sun{background:#c04040;border-color:#c04040;color:#ffc8c0;}
 /* データセル */
 .dc{min-width:var(--dw);width:var(--dw);height:48px;border:1px solid var(--bd);text-align:center;vertical-align:middle;font-size:1.2rem;font-weight:900;background:white;cursor:pointer;transition:filter 0.12s;user-select:none;position:relative;color:var(--dark);}
 .dc.sat{background:var(--sat);}.dc.sun{background:var(--sun);}
@@ -85,11 +85,9 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
 /* writing-mode:vertical-rl + white-space:nowrap で1文字ずつ縦に並ぶ */
 .hol-name{color:#c0392b;font-size:0.85rem;font-weight:900;writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;line-height:1.1;max-height:106px;overflow:hidden;display:inline-block;}
 .biko-text{color:#1c2833;font-size:0.85rem;font-weight:700;writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;line-height:1.1;max-height:106px;overflow:hidden;display:inline-block;}
-/* 繁忙赤丸：日付+曜日行を楕円で囲む（テキストより大きく余白確保） */
+/* 繁忙赤丸：日付+曜日のセル範囲内にぴったり収まる楕円 */
 .thd{overflow:visible;}
-.busy-ring{position:absolute;top:-5px;left:50%;transform:translateX(-50%);width:40px;height:62px;border:2.5px solid #e74c3c;border-radius:20px;pointer-events:none;z-index:5;}
-/* 日曜（赤背景）では白い枠で視認性を確保 */
-.thd.sun .busy-ring{border-color:rgba(255,255,255,0.9);}
+.busy-ring{position:absolute;top:0;left:50%;transform:translateX(-50%);width:38px;height:44px;border:2.5px solid #e74c3c;border-radius:19px;pointer-events:none;z-index:5;}
 /* 休み日数（fk列＝紺背景に白文字） */
 .kc{font-size:1.15rem;font-weight:900;line-height:1;}
 .kc.red{color:#ff4444;}   /* 7日以下で赤 */
@@ -172,7 +170,7 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
   :root{--nw:68px;--kw:28px;--dw:32px;}
   header,.tab-nav,.abar,.lgd,.msel,.deadline-notice,.locked-banner,#ti,#tp,#ta,.stitle{display:none!important;}
   #tc{display:block!important;text-align:center;}
-  body{background:white;margin:0;padding:0;}
+  html,body{background:white;margin:0;padding:0;min-height:0!important;height:auto!important;overflow:hidden!important;}
   .content{padding:0;}
   /* 印刷ヘッダー：位置調整（13mm下） */
   #print-hdr{display:flex!important;align-items:baseline;margin-bottom:6px;margin-top:13mm;}
@@ -205,7 +203,7 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
   .thw{font-size:0.56rem;padding:1px;}
   .kc{font-size:0.88rem;font-weight:600;}
   .kc.red{color:#ff2222!important;}
-  .busy-ring{width:28px;height:44px;border-width:1.5px;border-radius:14px;top:-3px;}
+  .busy-ring{width:26px;height:30px;border-width:1.5px;border-radius:13px;top:0;}
 }
 </style>
 </head>
