@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>グランビュー石垣 The First | シフト表</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Shippori+Mincho:wght@600;700&display=swap');
@@ -465,15 +468,19 @@ async function loadFromCloud(key){
 }
 
 // 全データをクラウドに保存（デバウンス付き）
+let lastModifiedTime='';
 function scheduleCloudSave(){
   if(cloudSaveTimer)clearTimeout(cloudSaveTimer);
   cloudSaveTimer=setTimeout(()=>saveAllToCloud(),2000);
 }
 async function saveAllToCloud(){
+  const now=new Date().toISOString();
   await Promise.all([
     saveToCloud('staff',{STAFF,BATH,CUSTOM}),
+    saveToCloud('last_modified',now),
     ...Object.keys(SD).flatMap(y=>Object.keys(SD[y]).map(m=>saveToCloud('shift_'+y+'_'+m,{sd:SD[y][m],kd:KD[y]?.[m],biko:BIKO[y]?.[m]}))),
   ]);
+  lastModifiedTime=now;
 }
 
 // クラウドから全データを読み込む
@@ -1217,10 +1224,36 @@ renderNames();initM(CY,CM);
     const cb=document.getElementById('sw-dl');
     if(cb)cb.checked=deadlineClosed;
   }
+  // 初期のlast_modifiedを記録
+  const lm=await loadFromCloud('last_modified');
+  if(lm)lastModifiedTime=lm;
   renderNames();
   drawChief(CY,CM,'ctw',false);
   drawPast();
 })();
+
+// ─── リアルタイム同期ポーリング（30秒ごと） ───
+async function pollForUpdates(){
+  try{
+    const lm=await loadFromCloud('last_modified');
+    if(lm&&lm!==lastModifiedTime&&lastModifiedTime!==''){
+      // 他の端末でデータが更新された
+      const loaded=await loadAllFromCloud();
+      if(loaded){
+        ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
+        renderNames();
+        if(document.getElementById('tc').classList.contains('active'))drawChief(CY,CM,'ctw',false);
+        if(document.getElementById('ti').classList.contains('active')&&selName)drawInput(CY,CM,'itw',selName);
+        if(document.getElementById('ta').classList.contains('active')&&isAdmin){drawKI();drawBikoInput();drawAdjTable();}
+        showToast('🔄 データが更新されました');
+      }
+      lastModifiedTime=lm;
+    }else if(lm&&lastModifiedTime===''){
+      lastModifiedTime=lm;
+    }
+  }catch(e){console.warn('同期エラー:',e);}
+}
+setInterval(pollForUpdates,30000);
 </script>
 </body>
 </html>
