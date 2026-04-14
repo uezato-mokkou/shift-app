@@ -57,8 +57,8 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
 .dc{min-width:var(--dw);width:var(--dw);height:48px;border:1px solid var(--bd);text-align:center;vertical-align:middle;font-size:1.2rem;font-weight:900;background:white;cursor:pointer;transition:filter 0.12s;user-select:none;position:relative;color:var(--dark);}
 .dc.sat{background:var(--sat);}.dc.sun{background:var(--sun);}
 /* 「休」「出」は背景透明・文字大きめ（!importantなしでinline styleが優先される）*/
-.dc.kyuu{background:transparent;color:var(--green)!important;font-size:1.5rem;}
-.dc.shuts{background:transparent;font-size:1.5rem;}
+.dc.kyuu{background:transparent;color:var(--green)!important;font-size:1.5rem;font-weight:600;}
+.dc.shuts{background:transparent;font-size:1.5rem;font-weight:600;}
 .dc.adj{background:var(--adjBg);color:var(--adj)!important;}
 .dc.noclick{cursor:default;}
 .dc:not(.noclick):active{filter:brightness(0.88);}
@@ -685,15 +685,11 @@ function drawInput(y,m,wid,fname){
 // ─── 全体シフト ───
 // 全体シフト用：「休」「調整休」を区別なく同じスタイルで表示
 function chiefCellBg(y,m,d,v){
-  if(v==='kyuu'||v==='出'){
+  if(v==='kyuu'||v==='adj'||v==='出'){
+    // シフト表では調整休も通常の休と同じ表示（紫背景なし）
     if(isSat(y,m,d))return 'var(--sat)';
     if(isHol(y,m,d))return 'var(--sun)';
     return 'transparent';
-  }
-  if(v==='adj'){
-    if(isSat(y,m,d))return 'var(--sat)';
-    if(isHol(y,m,d))return 'var(--sun)';
-    return 'var(--adjl)';
   }
   if(isSat(y,m,d))return 'var(--sat)';
   if(isHol(y,m,d))return 'var(--sun)';
@@ -729,13 +725,7 @@ function drawChief(y,m,wid,adjMode){
   h+=buildShutsu(y,m,n);h+=buildBathRows(y,m,n);
   h+=buildKadou(y,m,n,ka);h+=buildBiko(y,m,n);h+='</tbody></table>';
   w.innerHTML=h;
-  w.querySelector('.stbl').addEventListener('click',e=>{
-    const td=e.target.closest('td[data-n]');if(!td||!isAdmin)return;
-    e.stopPropagation();
-    const nm=td.dataset.n,d=+td.dataset.d,yy=+td.dataset.y,mm=+td.dataset.m;
-    cpCB=(val)=>{SD[yy][mm][nm][d]=val;drawChief(yy,mm,wid,adjMode);};
-    if(BATH.includes(nm))showBathPop(e,td,nm,yy,mm,d);else showPop(e,td,nm,yy,mm,d,adjMode);
-  });
+  // シフト表は閲覧専用・クリック編集不可
 }
 
 // ─── 調整テーブル（管理者専用） ───
