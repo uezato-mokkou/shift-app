@@ -89,7 +89,7 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
 .busy-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:34px;height:34px;border:3px solid #e74c3c;border-radius:50%;pointer-events:none;}
 /* 休み日数（fk列＝紺背景に白文字） */
 .kc{font-size:1.15rem;font-weight:900;line-height:1;}
-.kc.red{color:#ff8080;}   /* 個人入力画面：8日以下で赤（薄め） */
+.kc.red{color:#ff4444;}   /* 7日以下で赤 */
 .kc.ok{color:rgba(255,255,255,0.85);}  /* 通常：白文字 */
 /* ボタン */
 .btn{padding:10px 18px;border-radius:7px;border:none;font-family:'Noto Sans JP',sans-serif;font-size:0.82rem;font-weight:700;cursor:pointer;transition:all 0.18s;}
@@ -178,19 +178,20 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
   /* sticky解除（ずれ防止） */
   .fn{position:relative!important;left:auto!important;font-size:0.72rem;}
   .fk{position:relative!important;left:auto!important;font-size:0.62rem;}
-  /* 枠線を濃く表示 */
-  .dc{height:30px;font-size:0.84rem;font-weight:400;border:1px solid #aaa!important;}
+  /* ── 枠線：td/th すべてに直接指定（最優先） ── */
+  #tc td,#tc th{border:1px solid #777!important;}
+  .dc{height:30px;font-size:0.84rem;font-weight:400;}
   .dc.kyuu{font-weight:400;}
   .dc.shuts{font-weight:400;}
-  .rout .dc{font-weight:500;border:1px solid #aaa!important;}
-  .dck{height:22px;font-size:0.72rem;font-weight:400;border:1px solid #aaa!important;}
-  .dcb{height:64px;border:1px solid #aaa!important;}
+  .rout .dc{font-weight:500;}
+  .dck{height:22px;font-size:0.72rem;font-weight:400;}
+  .dcb{height:64px;}
   .hol-name,.biko-text{font-size:0.66rem;max-height:62px;}
   .thd{font-size:0.64rem;padding:3px 1px 2px;}
   .thw{font-size:0.56rem;padding:1px;}
   .kc{font-size:0.88rem;font-weight:600;}
   /* 印刷でも休日数7以下を赤文字 */
-  .kc.red{color:#e03030!important;}
+  .kc.red{color:#ff2222!important;}
   .busy-ring{width:22px;height:22px;border-width:2px;}
 }
 </style>
@@ -733,7 +734,7 @@ function drawChief(y,m,wid,adjMode){
   let h=buildHdr(y,m,n,busy);
   STAFF.forEach(nm=>{
     const cnt=cntKyuu(y,m,nm);
-    h+=`<tr><td class="fn">${nm}</td><td class="fk"><span class="kc ok">${cnt||''}</span></td>`;
+    h+=`<tr><td class="fn">${nm}</td><td class="fk"><span class="kc ${cnt>0&&cnt<=7?'red':'ok'}">${cnt||''}</span></td>`;
     for(let d=1;d<=n;d++){
       const v=SD[y][m][nm]?SD[y][m][nm][d]||'':'';
       const bg=chiefCellBg(y,m,d,v);const col=chiefCellColor(v);const cls=chiefCellClass(v,y,m,d);
