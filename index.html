@@ -174,15 +174,20 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
   .content{padding:0;}
   /* 印刷ヘッダー表示 */
   #print-hdr{display:flex!important;align-items:baseline;margin-bottom:6px;}
+  /* テーブルをセンター配置 */
+  #tc{text-align:center;}
+  #print-wrap{display:inline-block;text-align:left;}
   .swrap{box-shadow:none;border:none;overflow:visible;width:max-content!important;max-width:none!important;border-radius:0;display:block;}
+  /* 印刷右下：会社名 */
+  #print-footer{display:block!important;text-align:right;font-size:0.6rem;color:#666;margin-top:3px;font-family:'Noto Sans JP',sans-serif;}
   /* sticky解除（ずれ防止） */
   .fn{position:relative!important;left:auto!important;font-size:0.72rem;}
   .fk{position:relative!important;left:auto!important;font-size:0.62rem;}
   /* ── 枠線：border-collapse:separateで各セルの枠線を独立させる ── */
   .stbl{border-collapse:separate!important;border-spacing:0!important;}
-  #tc td,#tc th{border-right:1px solid #777!important;border-bottom:1px solid #777!important;}
-  #tc tr:first-child td,#tc tr:first-child th,#tc thead td,#tc thead th{border-top:1px solid #777!important;}
-  #tc td:first-child,#tc th:first-child{border-left:1px solid #777!important;}
+  #tc td,#tc th{border-right:1px solid #ccc!important;border-bottom:1px solid #ccc!important;}
+  #tc tr:first-child td,#tc tr:first-child th,#tc thead td,#tc thead th{border-top:1px solid #ccc!important;}
+  #tc td:first-child,#tc th:first-child{border-left:1px solid #ccc!important;}
   .dc{height:30px;font-size:0.84rem;font-weight:400;}
   .dc.kyuu{font-weight:400;}
   .dc.shuts{font-weight:400;}
@@ -230,7 +235,10 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
     <div class="ld"><div class="ldot" style="background:var(--sun)"></div>日・祝</div>
     <div class="ld"><div style="width:17px;height:17px;border:3px solid #e05050;border-radius:50%;display:inline-block;"></div>繁忙日(OUT≥30)</div>
   </div>
-  <div class="swrap" id="ctw"></div>
+  <div id="print-wrap">
+    <div class="swrap" id="ctw"></div>
+    <div id="print-footer" style="display:none;">ARA建物管理株式会社</div>
+  </div>
 </div>
 
 <!-- 休み入力 -->
@@ -288,12 +296,6 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
         <button class="btn btn-s bsm" onclick="exportCSV()">📥 CSVダウンロード</button>
       </div>
     </div>
-    <!-- Groq APIキー -->
-    <div class="acard">
-      <h3>🤖 Groq APIキー設定（無料・画像読み取り用）</h3>
-      <p style="font-size:.76rem;color:var(--mid);margin-bottom:10px;line-height:1.6;"><a href="https://console.groq.com" target="_blank" style="color:var(--P);">console.groq.com</a> で無料取得した「gsk_...」のキーを設定してください。稼働表の画像読み取りに使用します。</p>
-      <div id="groq-key-area-main"></div>
-    </div>
     <!-- 設定 -->
     <div class="acard">
       <h3>⚙️ 設定</h3>
@@ -306,6 +308,16 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
         <button class="btn btn-s bsm" onclick="changeCurMonth()">月変更</button>
       </div>
     </div>
+    <!-- シフト最終調整 -->
+    <div class="acard">
+      <h3>🎛 シフト最終調整</h3>
+      <p style="font-size:.76rem;color:var(--mid);margin-bottom:10px;">セルをタップ → 希望休(緑)・調整休(紫)・カスタム値・クリア を設定できます。</p>
+      <div class="lgd">
+        <div class="ld"><div class="ldot" style="background:#fff;border:2px solid var(--grn);"></div>希望休（緑文字）</div>
+        <div class="ld"><div class="ldot" style="background:var(--adjl);border:2px solid var(--adj);"></div>調整休（紫）</div>
+      </div>
+      <div class="swrap" id="adj-wrap"></div>
+    </div>
     <!-- 稼働読取 -->
     <div class="acard">
       <h3>📊 稼働数の入力</h3>
@@ -317,7 +329,7 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
         <div class="abar" style="margin-top:10px;"><button class="btn btn-p bsm" onclick="saveKadou()">💾 保存</button></div>
       </div>
 
-      <!-- AI読取（折りたたみ） -->
+      <!-- AI読取 -->
       <div style="border-top:1px solid var(--bd);padding-top:14px;">
         <div style="font-weight:700;font-size:.88rem;margin-bottom:10px;color:var(--dark);">📷 稼働表を画像で読み取る（AI・無料）</div>
         <div id="groq-key-area-ocr"></div>
@@ -345,16 +357,6 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
       <h3>📝 備考欄の手動入力</h3>
       <div class="swrap" id="biko-wrap"></div>
     </div>
-    <!-- シフト最終調整 -->
-    <div class="acard">
-      <h3>🎛 シフト最終調整</h3>
-      <p style="font-size:.76rem;color:var(--mid);margin-bottom:10px;">セルをタップ → 希望休(緑)・調整休(紫)・カスタム値・クリア を設定できます。</p>
-      <div class="lgd">
-        <div class="ld"><div class="ldot" style="background:#fff;border:2px solid var(--grn);"></div>希望休（緑文字）</div>
-        <div class="ld"><div class="ldot" style="background:var(--adjl);border:2px solid var(--adj);"></div>調整休（紫）</div>
-      </div>
-      <div class="swrap" id="adj-wrap"></div>
-    </div>
     <!-- 従業員管理 -->
     <div class="acard">
       <h3>👤 従業員管理（追加・変更・削除）</h3>
@@ -380,6 +382,12 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
     <div class="acard">
       <h3>📜 入力履歴</h3>
       <div class="hlog" id="hlog"><div style="color:#aaa;text-align:center;padding:16px;">まだ履歴がありません</div></div>
+    </div>
+    <!-- Groq APIキー -->
+    <div class="acard">
+      <h3>🤖 Groq APIキー設定（無料・画像読み取り用）</h3>
+      <p style="font-size:.76rem;color:var(--mid);margin-bottom:10px;line-height:1.6;"><a href="https://console.groq.com" target="_blank" style="color:var(--P);">console.groq.com</a> で無料取得した「gsk_...」のキーを設定してください。稼働表の画像読み取りに使用します。</p>
+      <div id="groq-key-area-main"></div>
     </div>
   </div>
 </div>
@@ -610,7 +618,13 @@ function dcBg(y,m,d,v){
   if(isHol(y,m,d))return 'var(--sun)';
   return '#ffffff';
 }
-function dcText(v){if(v==='kyuu'||v==='adj')return '休';return v||'';}
+function dcText(v){
+  if(v==='kyuu'||v==='adj')return '休';
+  if(!v)return '';
+  // カスタム値（10-13など）は小さいフォント+折り返しなし
+  if(v.length>2)return `<span style="font-size:0.68rem;white-space:nowrap;display:block;line-height:1.2;">${v}</span>`;
+  return v;
+}
 function dcClass(v,y,m,d){
   let c='dc ';c+=v==='kyuu'?'kyuu ':v==='adj'?'adj ':v==='出'?'shuts ':'';
   c+=isSat(y,m,d)?'sat ':isHol(y,m,d)?'sun ':'';return c.trim();
@@ -644,7 +658,13 @@ function buildKadou(y,m,n,ka){
   ['OUT','Stay','IN'].forEach((k,ki)=>{
     const rc=ki===0?'row-out':ki===2?'row-in':'';
     h+=`<tr><td class="fn lbl ${rc}">${k}</td><td class="fk lbl"></td>`;
-    for(let d=1;d<=n;d++){const s=isSat(y,m,d),sh=isHol(y,m,d);h+=`<td class="dck ${s?'sat':sh?'sun':''} ${rc}">${ka[k][d]!==''?ka[k][d]:''}</td>`;}
+    for(let d=1;d<=n;d++){
+      const s=isSat(y,m,d),sh=isHol(y,m,d);
+      const val=ka[k][d];
+      // OUT行：30以上は赤文字・太字
+      const red=k==='OUT'&&parseInt(val||0)>=30;
+      h+=`<td class="dck ${s?'sat':sh?'sun':''} ${rc}"${red?' style="color:#e03030;font-weight:900;"':''}>${val!==''?val:''}</td>`;
+    }
     h+='</tr>';
   });
   return h;
@@ -1144,12 +1164,12 @@ window.addEventListener('beforeprint',function(){
   // テーブルをseparateに切り替え（各セルの枠線を独立させる）
   const tbl=document.querySelector('#tc .stbl');
   if(tbl){tbl.style.setProperty('border-collapse','separate','important');tbl.style.setProperty('border-spacing','0','important');}
-  // 全セルに枠線をインラインで直接設定（最優先）
-  document.querySelectorAll('#tc td,#tc th').forEach(function(el,i,arr){
-    el.style.setProperty('border-right','1px solid #666','important');
-    el.style.setProperty('border-bottom','1px solid #666','important');
-    el.style.setProperty('border-top','1px solid #666','important');
-    el.style.setProperty('border-left','1px solid #666','important');
+  // 全セルに枠線をインラインで直接設定（最優先・シフト表と同じ細さ）
+  document.querySelectorAll('#tc td,#tc th').forEach(function(el){
+    el.style.setProperty('border-right','1px solid #ccc','important');
+    el.style.setProperty('border-bottom','1px solid #ccc','important');
+    el.style.setProperty('border-top','1px solid #ccc','important');
+    el.style.setProperty('border-left','1px solid #ccc','important');
   });
 });
 window.addEventListener('afterprint',function(){
