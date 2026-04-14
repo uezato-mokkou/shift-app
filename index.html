@@ -56,9 +56,9 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
 /* データセル */
 .dc{min-width:var(--dw);width:var(--dw);height:48px;border:1px solid var(--bd);text-align:center;vertical-align:middle;font-size:1.2rem;font-weight:900;background:white;cursor:pointer;transition:filter 0.12s;user-select:none;position:relative;color:var(--dark);}
 .dc.sat{background:var(--sat);}.dc.sun{background:var(--sun);}
-/* 「休」「出」は背景透明・文字大きめ */
-.dc.kyuu{color:var(--green)!important;font-size:1.5rem;}
-.dc.shuts{background:transparent!important;font-size:1.5rem;}
+/* 「休」「出」は背景透明・文字大きめ（!importantなしでinline styleが優先される）*/
+.dc.kyuu{background:transparent;color:var(--green)!important;font-size:1.5rem;}
+.dc.shuts{background:transparent;font-size:1.5rem;}
 .dc.adj{background:var(--adjBg)!important;color:var(--adj)!important;}
 .dc.noclick{cursor:default;}
 .dc:not(.noclick):active{filter:brightness(0.88);}
@@ -809,10 +809,7 @@ function showAdjPop(e,tdEl,nm,y,m,d){
 }
 // 大浴場調整専用
 function showBathPopAdj(e,tdEl,nm,y,m,d){
-  const customs=CUSTOM[nm]||[];
-  const items=[{l:'調整休',c:'aj',v:'adj'},{l:'休',c:'ky',v:'kyuu'}];
-  customs.forEach(cv=>items.push({l:cv,c:'cu',v:cv}));
-  items.push({l:'クリア(出)',c:'cl',v:''});
+  const items=[{l:'出',c:'shuts',v:'出'},{l:'クリア',c:'cl',v:''}];
   showPopup(e,tdEl,items,d+'日 / '+nm+' 【大浴場調整】');
 }
 // 大浴場（個人入力用）
