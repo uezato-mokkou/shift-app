@@ -1136,9 +1136,22 @@ function showToast(msg){
   setTimeout(()=>t.style.transform='translateX(-50%) translateY(70px)',2800);
 }
 
-// ─── 印刷後リセット ───
+// ─── 印刷時：枠線をインラインスタイルで強制設定 ───
+window.addEventListener('beforeprint',function(){
+  // td/th の枠線をインラインで直接設定（最優先）
+  document.querySelectorAll('#tc td,#tc th').forEach(function(el){
+    el.style.setProperty('border','1px solid #666','important');
+  });
+  // 備考・稼働セルは少し薄め
+  document.querySelectorAll('#tc .dcb,#tc .dck').forEach(function(el){
+    el.style.setProperty('border','1px solid #888','important');
+  });
+});
 window.addEventListener('afterprint',function(){
-  const sw=document.querySelector('#ctw .swrap');if(sw)sw.style.zoom='';
+  // 印刷後はインラインスタイルを解除（画面表示に戻す）
+  document.querySelectorAll('#tc td,#tc th').forEach(function(el){
+    el.style.removeProperty('border');
+  });
 });
 // ─── 初期化 ───
 renderNames();initM(CY,CM);
