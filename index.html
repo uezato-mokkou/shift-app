@@ -178,8 +178,11 @@ header{background:#ffffff;color:var(--dark);padding:11px 16px;display:flex;align
   /* sticky解除（ずれ防止） */
   .fn{position:relative!important;left:auto!important;font-size:0.72rem;}
   .fk{position:relative!important;left:auto!important;font-size:0.62rem;}
-  /* ── 枠線：td/th すべてに直接指定（最優先） ── */
-  #tc td,#tc th{border:1px solid #777!important;}
+  /* ── 枠線：border-collapse:separateで各セルの枠線を独立させる ── */
+  .stbl{border-collapse:separate!important;border-spacing:0!important;}
+  #tc td,#tc th{border-right:1px solid #777!important;border-bottom:1px solid #777!important;}
+  #tc tr:first-child td,#tc tr:first-child th,#tc thead td,#tc thead th{border-top:1px solid #777!important;}
+  #tc td:first-child,#tc th:first-child{border-left:1px solid #777!important;}
   .dc{height:30px;font-size:0.84rem;font-weight:400;}
   .dc.kyuu{font-weight:400;}
   .dc.shuts{font-weight:400;}
@@ -1136,21 +1139,25 @@ function showToast(msg){
   setTimeout(()=>t.style.transform='translateX(-50%) translateY(70px)',2800);
 }
 
-// ─── 印刷時：枠線をインラインスタイルで強制設定 ───
+// ─── 印刷時：border-collapse:separateで枠線を確実に表示 ───
 window.addEventListener('beforeprint',function(){
-  // td/th の枠線をインラインで直接設定（最優先）
-  document.querySelectorAll('#tc td,#tc th').forEach(function(el){
-    el.style.setProperty('border','1px solid #666','important');
-  });
-  // 備考・稼働セルは少し薄め
-  document.querySelectorAll('#tc .dcb,#tc .dck').forEach(function(el){
-    el.style.setProperty('border','1px solid #888','important');
+  // テーブルをseparateに切り替え（各セルの枠線を独立させる）
+  const tbl=document.querySelector('#tc .stbl');
+  if(tbl){tbl.style.setProperty('border-collapse','separate','important');tbl.style.setProperty('border-spacing','0','important');}
+  // 全セルに枠線をインラインで直接設定（最優先）
+  document.querySelectorAll('#tc td,#tc th').forEach(function(el,i,arr){
+    el.style.setProperty('border-right','1px solid #666','important');
+    el.style.setProperty('border-bottom','1px solid #666','important');
+    el.style.setProperty('border-top','1px solid #666','important');
+    el.style.setProperty('border-left','1px solid #666','important');
   });
 });
 window.addEventListener('afterprint',function(){
-  // 印刷後はインラインスタイルを解除（画面表示に戻す）
+  // 印刷後はリセット（画面表示に戻す）
+  const tbl=document.querySelector('#tc .stbl');
+  if(tbl){tbl.style.removeProperty('border-collapse');tbl.style.removeProperty('border-spacing');}
   document.querySelectorAll('#tc td,#tc th').forEach(function(el){
-    el.style.removeProperty('border');
+    ['border-right','border-bottom','border-top','border-left'].forEach(function(p){el.style.removeProperty(p);});
   });
 });
 // ─── 初期化 ───
