@@ -483,12 +483,38 @@ function scheduleCloudSave(){
 }
 async function saveAllToCloud(){
   const now=new Date().toISOString();
+  saveToLocalBackup(now); // まずlocalStorageに即時保存
   await Promise.all([
     saveToCloud('staff',{STAFF,BATH,CUSTOM}),
     saveToCloud('last_modified',now),
     ...Object.keys(SD).flatMap(y=>Object.keys(SD[y]).map(m=>saveToCloud('shift_'+y+'_'+m,{sd:SD[y][m],kd:KD[y]?.[m],biko:BIKO[y]?.[m]}))),
   ]);
   lastModifiedTime=now;
+}
+
+// ─── localStorageバックアップ（クラウド障害・ブラウザ終了対策） ───
+function saveToLocalBackup(ts){
+  try{
+    localStorage.setItem('shiftbk_modified',ts||new Date().toISOString());
+    localStorage.setItem('shiftbk_staff',JSON.stringify({STAFF,BATH,CUSTOM}));
+    Object.keys(SD).forEach(y=>Object.keys(SD[y]).forEach(m=>{
+      localStorage.setItem('shiftbk_'+y+'_'+m,JSON.stringify({sd:SD[y][m],kd:KD[y]?.[m],biko:BIKO[y]?.[m]}));
+    }));
+  }catch(e){console.warn('ローカルバックアップ保存エラー:',e);}
+}
+function loadFromLocalBackup(){
+  try{
+    const staffRaw=localStorage.getItem('shiftbk_staff');
+    if(staffRaw){const s=JSON.parse(staffRaw);if(s.STAFF)STAFF.splice(0,STAFF.length,...s.STAFF);if(s.BATH)BATH.splice(0,BATH.length,...s.BATH);if(s.CUSTOM)Object.assign(CUSTOM,s.CUSTOM);}
+    [[CY,CM],[2026,5],[2026,6],[2026,7],[2026,8],[2026,9]].forEach(([y,m])=>{
+      const raw=localStorage.getItem('shiftbk_'+y+'_'+m);
+      if(!raw)return;const d=JSON.parse(raw);
+      if(!SD[y])SD[y]={};if(d.sd)SD[y][m]=d.sd;
+      if(!KD[y])KD[y]={};if(d.kd)KD[y][m]=d.kd;
+      if(!BIKO[y])BIKO[y]={};if(d.biko)BIKO[y][m]=d.biko;
+    });
+    return localStorage.getItem('shiftbk_modified')||'';
+  }catch(e){console.warn('ローカルバックアップ読込エラー:',e);return '';}
 }
 
 // クラウドから全データを読み込む
@@ -1220,11 +1246,25 @@ renderNames();initM(CY,CM);
 {const _pt=document.getElementById('print-title');if(_pt)_pt.textContent='シフト表（'+CM+'月）';}
 // クラウドからデータ読み込み後に描画
 (async()=>{
+  // クラウドから読み込み
   const loaded=await loadAllFromCloud();
-  if(loaded){
+  if(loaded) ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
+  // クラウドのlast_modified取得
+  const cloudLm=await loadFromCloud('last_modified')||'';
+  // localStorageのバックアップ時刻と比較
+  const localLm=localStorage.getItem('shiftbk_modified')||'';
+  if(localLm>cloudLm){
+    // localStorageの方が新しい → 復元してクラウドへ同期
+    loadFromLocalBackup();
     ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
+    showToast('💾 未同期のローカルデータを復元しました。クラウドへ同期中…');
+    await saveAllToCloud();
+    showToast('✅ クラウドへの同期が完了しました');
+  } else if(loaded){
     showToast('☁️ クラウドからデータを読み込みました');
+    saveToLocalBackup(cloudLm); // クラウドデータをlocalStorageにもバックアップ
   }
+  lastModifiedTime=cloudLm||localLm;
   // 締め切り状態をクラウドから取得
   const dc=await loadFromCloud('deadline_closed');
   if(dc!==null){
@@ -1232,9 +1272,6 @@ renderNames();initM(CY,CM);
     const cb=document.getElementById('sw-dl');
     if(cb)cb.checked=deadlineClosed;
   }
-  // 初期のlast_modifiedを記録
-  const lm=await loadFromCloud('last_modified');
-  if(lm)lastModifiedTime=lm;
   renderNames();
   drawChief(CY,CM,'ctw',false);
   drawPast();
@@ -1245,10 +1282,15 @@ async function pollForUpdates(){
   try{
     const lm=await loadFromCloud('last_modified');
     if(lm&&lm!==lastModifiedTime&&lastModifiedTime!==''){
+      // 編集中（シフト入力画面が開いている）は上書きしない
+      if(selName&&document.getElementById('siv')&&document.getElementById('siv').style.display!=='none'){
+        return; // 編集中はスキップ
+      }
       // 他の端末でデータが更新された
       const loaded=await loadAllFromCloud();
       if(loaded){
         ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
+        saveToLocalBackup(lm); // localStorageも更新
         renderNames();
         if(document.getElementById('tc').classList.contains('active'))drawChief(CY,CM,'ctw',false);
         if(document.getElementById('ti').classList.contains('active')&&selName)drawInput(CY,CM,'itw',selName);
