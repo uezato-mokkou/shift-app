@@ -346,7 +346,6 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
       <!-- AI読取 -->
       <div style="border-top:1px solid var(--bd);padding-top:14px;">
         <div style="font-weight:700;font-size:.88rem;margin-bottom:10px;color:var(--dark);">📷 稼働表を画像で読み取る（AI・無料）</div>
-        <div id="groq-key-area-ocr"></div>
         <div style="border:2px dashed var(--bd);border-radius:9px;padding:20px 14px;text-align:center;cursor:pointer;background:#f8f9fa;margin:8px 0;" onclick="checkKeyAndUpload()">
           <div style="font-size:1.6rem;margin-bottom:6px;">📷</div>
           <div style="font-size:.82rem;color:var(--mid);">タップして稼働表の画像を選択</div>
@@ -554,8 +553,7 @@ function initM(y,m){
   ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
 }
 initM(2026,4);initM(2026,5);
-// 4月サンプルOUT
-[15,13,7,7,25,18,13,15,23,19,32,25,29,44,22,18,27,19,19,20,5,19,23,28,4,12,8,19,33,25].forEach((v,i)=>{KD[2026][4].OUT[i+1]=v;});
+// ※稼働数の初期値はクラウドから読み込み（ハードコードしない）
 
 // 休み数カウント
 function cntKyuu(y,m,nm){
@@ -933,23 +931,25 @@ function hidePopup(){ document.getElementById('cpopup').style.display='none'; }
 
 // ─── Groq APIキー ───
 function renderGroqKeyArea(){
-  ['groq-key-area-main','groq-key-area-ocr'].forEach(id=>{
-    const area=document.getElementById(id);if(!area)return;
-    if(groqApiKey){
-      area.innerHTML=`<div style="font-size:.78rem;color:#2E7D32;background:#E8F5E9;border-radius:8px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;"><span>✅ APIキー設定済み（gsk_...）</span><button onclick="clearGroqKey()" style="font-size:.72rem;color:#999;background:none;border:none;cursor:pointer;padding:0;">🗑️ クリア</button></div>`;
-    }else{
-      area.innerHTML=`<div style="background:#FFF3E0;border:2px solid #FF9800;border-radius:10px;padding:10px 12px;"><div style="font-size:.78rem;font-weight:700;color:#E65100;margin-bottom:6px;">⚠️ APIキーが未設定です</div><input id="groq-key-input-${id}" type="password" placeholder="gsk_..." style="width:100%;padding:8px 10px;border:2px solid #FF9800;border-radius:8px;font-size:.85rem;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px;"><button onclick="saveGroqKey('groq-key-input-${id}')" style="width:100%;padding:10px;background:#FF9800;color:white;border:none;border-radius:8px;font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;">💾 APIキーを保存する</button></div>`;
-    }
-  });
+  const area=document.getElementById('groq-key-area-main');if(!area)return;
+  if(groqApiKey){
+    area.innerHTML=`<div style="font-size:.78rem;color:#2E7D32;background:#E8F5E9;border-radius:8px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;"><span>✅ APIキー設定済み（gsk_...）</span><button onclick="clearGroqKey()" style="font-size:.72rem;color:#999;background:none;border:none;cursor:pointer;padding:0;">🗑️ クリア</button></div>`;
+  }else{
+    area.innerHTML=`<div style="background:#FFF3E0;border:2px solid #FF9800;border-radius:10px;padding:10px 12px;"><div style="font-size:.78rem;font-weight:700;color:#E65100;margin-bottom:6px;">⚠️ APIキーが未設定です</div><input id="groq-key-input" type="password" placeholder="gsk_..." style="width:100%;padding:8px 10px;border:2px solid #FF9800;border-radius:8px;font-size:.85rem;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px;"><button onclick="saveGroqKey()" style="width:100%;padding:10px;background:#FF9800;color:white;border:none;border-radius:8px;font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;">💾 APIキーを保存する</button></div>`;
+  }
 }
-function saveGroqKey(inputId){
-  const val=(document.getElementById(inputId)||{}).value||'';
+async function saveGroqKey(){
+  const val=(document.getElementById('groq-key-input')||{}).value||'';
   if(!val.trim()){showToast('⚠️ APIキーを入力してください');return;}
-  groqApiKey=val.trim();localStorage.setItem('shift_groq_key',groqApiKey);
-  renderGroqKeyArea();showToast('✅ Groq APIキーを保存しました');
+  groqApiKey=val.trim();
+  localStorage.setItem('shift_groq_key',groqApiKey);
+  await saveToCloud('groq_api_key',groqApiKey); // クラウドにも保存→全端末で共有
+  renderGroqKeyArea();showToast('✅ Groq APIキーを保存しました（全端末に反映）');
 }
-function clearGroqKey(){
-  groqApiKey='';localStorage.removeItem('shift_groq_key');
+async function clearGroqKey(){
+  groqApiKey='';
+  localStorage.removeItem('shift_groq_key');
+  await saveToCloud('groq_api_key','');
   renderGroqKeyArea();showToast('🗑️ APIキーをクリアしました');
 }
 
@@ -1265,6 +1265,16 @@ renderNames();initM(CY,CM);
     saveToLocalBackup(cloudLm); // クラウドデータをlocalStorageにもバックアップ
   }
   lastModifiedTime=cloudLm||localLm;
+  // Groq APIキーをクラウドから取得（全端末共有）
+  const cloudGroqKey=await loadFromCloud('groq_api_key');
+  if(cloudGroqKey){
+    // クラウドにキーがある→localStorageへも反映
+    groqApiKey=cloudGroqKey;
+    localStorage.setItem('shift_groq_key',groqApiKey);
+  } else if(groqApiKey){
+    // localStorageにキーがあるがクラウドにない→クラウドへ自動アップロード
+    await saveToCloud('groq_api_key',groqApiKey);
+  }
   // 締め切り状態をクラウドから取得
   const dc=await loadFromCloud('deadline_closed');
   if(dc!==null){
