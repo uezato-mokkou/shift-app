@@ -175,9 +175,10 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
 .mbdy{overflow:hidden;flex:1;position:relative;background:#f0f4f8;}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(70px);background:#1c2833;color:white;padding:10px 20px;border-radius:24px;font-size:0.82rem;font-weight:600;box-shadow:0 4px 18px rgba(0,0,0,0.25);transition:transform 0.3s ease;z-index:999;white-space:nowrap;}
 @media print{
-  @page{size:A4 landscape;margin:10mm 8mm;}
+  @page{size:A4 landscape;margin:8mm 6mm;}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;}
-  /* A4横幅(297-16=281mm≈1063px)に合わせて列幅を設定 */
+  /* A4横幅(297-12=285mm≈1078px)に合わせて列幅を設定 */
+  /* 30日以下: nw:68+kw:28+dw:32×30=1052px ✓  31日: JSがdw:31px等に自動調整 */
   :root{--nw:68px;--kw:28px;--dw:32px;}
   header,.tab-nav,.abar,.lgd,.msel,.deadline-notice,.locked-banner,#ti,#tp,#ta,.stitle{display:none!important;}
   #tc{display:block!important;text-align:center;}
@@ -1222,10 +1223,17 @@ function showToast(msg){
 
 // ─── 印刷時：border-collapse:separateで枠線を確実に表示 ───
 window.addEventListener('beforeprint',function(){
+  // 31日の月は列幅を1px縮小してA4横に収める（32px→31px、差は0.26mm/列）
+  const days=dim(CY,CM);
+  if(days===31){
+    document.documentElement.style.setProperty('--dw','31px');
+    document.documentElement.style.setProperty('--nw','66px');
+    document.documentElement.style.setProperty('--kw','27px');
+  }
   // テーブルをseparateに切り替え（各セルの枠線を独立させる）
   const tbl=document.querySelector('#tc .stbl');
   if(tbl){tbl.style.setProperty('border-collapse','separate','important');tbl.style.setProperty('border-spacing','0','important');}
-  // 全セルに0.5px枠線をインラインで設定（separate時の2重線を視覚的に解消）
+  // 全セルに0.5px枠線をインラインで設定
   document.querySelectorAll('#tc td,#tc th').forEach(function(el){
     el.style.setProperty('border-right','0.5px solid #ccc','important');
     el.style.setProperty('border-bottom','0.5px solid #ccc','important');
@@ -1235,6 +1243,9 @@ window.addEventListener('beforeprint',function(){
 });
 window.addEventListener('afterprint',function(){
   // 印刷後はリセット（画面表示に戻す）
+  document.documentElement.style.removeProperty('--dw');
+  document.documentElement.style.removeProperty('--nw');
+  document.documentElement.style.removeProperty('--kw');
   const tbl=document.querySelector('#tc .stbl');
   if(tbl){tbl.style.removeProperty('border-collapse');tbl.style.removeProperty('border-spacing');}
   document.querySelectorAll('#tc td,#tc th').forEach(function(el){
