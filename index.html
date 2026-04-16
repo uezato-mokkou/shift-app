@@ -56,13 +56,13 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
 .swrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;box-shadow:var(--sh);background:white;border:1px solid var(--bd);width:fit-content;max-width:100%;}
 .stbl{border-collapse:collapse;width:max-content;}
 /* 固定列：名前（青みがかったグレー） */
-.fn{position:sticky;left:0;z-index:12;background:#4a6880;color:white;min-width:var(--nw);max-width:var(--nw);width:var(--nw);padding:0 6px;font-size:1rem;font-weight:900;text-align:center;border:1px solid #5a7890;white-space:nowrap;vertical-align:middle;}
+.fn{position:sticky;left:0;z-index:12;background:#4a6880;color:white;min-width:var(--nw);max-width:var(--nw);width:var(--nw);padding:0 6px;font-size:1.15rem;font-weight:900;text-align:center;border:1px solid #5a7890;white-space:nowrap;vertical-align:middle;}
 /* 固定列：休み数 */
 .fk{position:sticky;left:var(--nw);z-index:12;background:#5a7890;color:white;min-width:var(--kw);width:var(--kw);text-align:center;font-size:0.7rem;border:1px solid #6a88a0;vertical-align:middle;font-weight:700;}
 /* 日付ヘッダー */
-.thd{min-width:var(--dw);width:var(--dw);padding:7px 2px 3px;font-weight:900;font-size:0.88rem;text-align:center;border:1px solid #5a7890;background:#5a7890;color:white;position:relative;vertical-align:bottom;}
+.thd{min-width:var(--dw);width:var(--dw);padding:9px 2px 4px;font-weight:900;font-size:1.05rem;text-align:center;border:1px solid #5a7890;background:#5a7890;color:white;position:relative;vertical-align:bottom;}
 .thd.sat{background:#3a7aa0;border-color:#3a7aa0;}.thd.sun{background:#c04040;border-color:#c04040;}
-.thw{min-width:var(--dw);width:var(--dw);padding:2px 2px 6px;font-size:0.75rem;text-align:center;border:1px solid #5a7890;background:#5a7890;color:#d0e8f4;}
+.thw{min-width:var(--dw);width:var(--dw);padding:2px 2px 7px;font-size:0.88rem;font-weight:700;text-align:center;border:1px solid #5a7890;background:#5a7890;color:#d0e8f4;}
 .thw.sat{color:#c0e4f4;}.thw.sun{color:#ffc8c0;}
 /* データセル */
 .dc{min-width:var(--dw);width:var(--dw);height:48px;border:1px solid var(--bd);text-align:center;vertical-align:middle;font-size:1.2rem;font-weight:900;background:white;cursor:pointer;transition:filter 0.12s;user-select:none;position:relative;color:var(--dark);}
@@ -199,9 +199,9 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
   .fk{position:relative!important;left:auto!important;font-size:0.62rem;}
   /* ── 枠線：0.5px細線でborder-collapse:separateの2重線を解消 ── */
   .stbl{border-collapse:separate!important;border-spacing:0!important;}
-  #tc td,#tc th{border-right:0.5px solid #ccc!important;border-bottom:0.5px solid #ccc!important;}
-  #tc tr:first-child td,#tc tr:first-child th,#tc thead td,#tc thead th{border-top:0.5px solid #ccc!important;}
-  #tc td:first-child,#tc th:first-child{border-left:0.5px solid #ccc!important;}
+  #tc td,#tc th{border-right:0.3px solid #666!important;border-bottom:0.3px solid #666!important;}
+  #tc tr:first-child td,#tc tr:first-child th,#tc thead td,#tc thead th{border-top:0.3px solid #666!important;}
+  #tc td:first-child,#tc th:first-child{border-left:0.3px solid #666!important;}
   .dc{height:30px;font-size:0.84rem;font-weight:400;}
   .dc.kyuu{font-weight:400;}
   .dc.shuts{font-weight:400;}
@@ -252,7 +252,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
   </div>
   <div id="print-wrap">
     <div class="swrap" id="ctw"></div>
-    <div id="print-footer" style="display:none;">ARA建物管理株式会社</div>
+    <div id="print-footer" style="display:none;"></div>
   </div>
 </div>
 
@@ -1239,10 +1239,10 @@ window.addEventListener('beforeprint',function(){
   if(tbl){tbl.style.setProperty('border-collapse','separate','important');tbl.style.setProperty('border-spacing','0','important');}
   // 全セルに0.5px枠線をインラインで設定
   document.querySelectorAll('#tc td,#tc th').forEach(function(el){
-    el.style.setProperty('border-right','0.5px solid #ccc','important');
-    el.style.setProperty('border-bottom','0.5px solid #ccc','important');
-    el.style.setProperty('border-top','0.5px solid #ccc','important');
-    el.style.setProperty('border-left','0.5px solid #ccc','important');
+    el.style.setProperty('border-right','0.3px solid #666','important');
+    el.style.setProperty('border-bottom','0.3px solid #666','important');
+    el.style.setProperty('border-top','0.3px solid #666','important');
+    el.style.setProperty('border-left','0.3px solid #666','important');
   });
 });
 window.addEventListener('afterprint',function(){
