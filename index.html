@@ -199,9 +199,9 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
   .fk{position:relative!important;left:auto!important;font-size:0.7rem;}
   /* ── 枠線 ── */
   .stbl{border-collapse:separate!important;border-spacing:0!important;}
-  #tc td,#tc th{border-right:0.3px solid #666!important;border-bottom:0.3px solid #666!important;}
-  #tc tr:first-child td,#tc tr:first-child th,#tc thead td,#tc thead th{border-top:0.3px solid #666!important;}
-  #tc td:first-child,#tc th:first-child{border-left:0.3px solid #666!important;}
+  #tc td,#tc th{border-right:0.3px solid #777!important;border-bottom:0.3px solid #777!important;border-top:none!important;border-left:none!important;}
+  #tc thead tr:first-child th,#tc thead tr:first-child td{border-top:0.3px solid #777!important;}
+  #tc td:first-child,#tc th:first-child{border-left:0.3px solid #777!important;}
   /* データセル：画面に近いサイズ */
   .dc{height:38px;font-size:1rem;font-weight:900;}
   .dc.kyuu{font-size:1.2rem;font-weight:600;}
@@ -1239,12 +1239,21 @@ window.addEventListener('beforeprint',function(){
   // テーブルをseparateに切り替え（各セルの枠線を独立させる）
   const tbl=document.querySelector('#tc .stbl');
   if(tbl){tbl.style.setProperty('border-collapse','separate','important');tbl.style.setProperty('border-spacing','0','important');}
-  // 全セルに0.5px枠線をインラインで設定
+  // 隣接セル間の二重線を防ぐため右・下のみ設定（上・左は最初の行/列のみ）
+  const BD='0.3px solid #777';
   document.querySelectorAll('#tc td,#tc th').forEach(function(el){
-    el.style.setProperty('border-right','0.3px solid #666','important');
-    el.style.setProperty('border-bottom','0.3px solid #666','important');
-    el.style.setProperty('border-top','0.3px solid #666','important');
-    el.style.setProperty('border-left','0.3px solid #666','important');
+    el.style.setProperty('border-right',BD,'important');
+    el.style.setProperty('border-bottom',BD,'important');
+    el.style.setProperty('border-top','none','important');
+    el.style.setProperty('border-left','none','important');
+  });
+  // 先頭行：上辺を追加
+  document.querySelectorAll('#tc thead tr:first-child th,#tc thead tr:first-child td').forEach(function(el){
+    el.style.setProperty('border-top',BD,'important');
+  });
+  // 先頭列：左辺を追加
+  document.querySelectorAll('#tc td:first-child,#tc th:first-child').forEach(function(el){
+    el.style.setProperty('border-left',BD,'important');
   });
 });
 window.addEventListener('afterprint',function(){
