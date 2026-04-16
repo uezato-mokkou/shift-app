@@ -99,7 +99,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
 .biko-text{color:#1c2833;font-size:0.85rem;font-weight:700;writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;line-height:1.1;max-height:106px;overflow:hidden;display:inline-block;}
 /* 繁忙赤丸：日付+曜日のセル範囲内にぴったり収まる楕円 */
 .thd{overflow:visible;}
-.busy-ring{position:absolute;top:1px;left:50%;transform:translateX(-50%);width:40px;height:62px;border:2.5px solid #e74c3c;border-radius:20px;pointer-events:none;z-index:5;}
+.busy-ring{position:absolute;top:1px;left:50%;transform:translateX(-50%);width:40px;height:64px;border:2.5px solid #e74c3c;border-radius:20px;pointer-events:none;z-index:5;}
 /* 休み日数（fk列＝紺背景に白文字） */
 .kc{font-size:1.15rem;font-weight:900;line-height:1;}
 .kc.red{color:#ff4444;}   /* 7日以下で赤 */
@@ -200,9 +200,9 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
   .fk{position:relative!important;left:auto!important;font-size:0.7rem;}
   /* ── 枠線 ── */
   .stbl{border-collapse:separate!important;border-spacing:0!important;}
-  #tc td,#tc th{border-right:0.3px solid #777!important;border-bottom:0.3px solid #777!important;border-top:none!important;border-left:none!important;}
-  #tc thead tr:first-child th,#tc thead tr:first-child td{border-top:0.3px solid #777!important;}
-  #tc td:first-child,#tc th:first-child{border-left:0.3px solid #777!important;}
+  #tc td,#tc th{border-right:0.6px solid #777!important;border-bottom:0.6px solid #777!important;border-top:none!important;border-left:none!important;}
+  #tc thead tr:first-child th,#tc thead tr:first-child td{border-top:0.6px solid #777!important;}
+  #tc td:first-child,#tc th:first-child{border-left:0.6px solid #777!important;}
   /* データセル：画面に近いサイズ */
   .dc{height:38px;font-size:1rem;font-weight:900;}
   .dc.kyuu{font-size:1.2rem;font-weight:600;}
@@ -1252,7 +1252,7 @@ window.addEventListener('beforeprint',function(){
   const tbl=document.querySelector('#tc .stbl');
   if(tbl){tbl.style.setProperty('border-collapse','separate','important');tbl.style.setProperty('border-spacing','0','important');}
   // 隣接セル間の二重線を防ぐため右・下のみ設定（上・左は最初の行/列のみ）
-  const BD='0.3px solid #777';
+  const BD='0.6px solid #777';
   document.querySelectorAll('#tc td,#tc th').forEach(function(el){
     el.style.setProperty('border-right',BD,'important');
     el.style.setProperty('border-bottom',BD,'important');
