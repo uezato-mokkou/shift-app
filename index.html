@@ -62,7 +62,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
 /* 日付ヘッダー */
 .thd{min-width:var(--dw);width:var(--dw);padding:9px 2px 4px;font-weight:900;font-size:1.05rem;text-align:center;border:1px solid #5a7890;background:#5a7890;color:white;position:relative;vertical-align:bottom;}
 .thd.sat{background:#3a7aa0;border-color:#3a7aa0;}.thd.sun{background:#c04040;border-color:#c04040;}
-.thw{min-width:var(--dw);width:var(--dw);padding:2px 2px 7px;font-size:0.88rem;font-weight:700;text-align:center;border:1px solid #5a7890;background:#5a7890;color:#d0e8f4;}
+.thw{min-width:var(--dw);width:var(--dw);padding:2px 2px 7px;font-size:0.88rem;font-weight:700;text-align:center;border:1px solid #5a7890;background:#5a7890;color:white;}
 .thw.sat{color:#c0e4f4;}.thw.sun{color:#ffc8c0;}
 /* データセル */
 .dc{min-width:var(--dw);width:var(--dw);height:48px;border:1px solid var(--bd);text-align:center;vertical-align:middle;font-size:1.2rem;font-weight:900;background:white;cursor:pointer;transition:filter 0.12s;user-select:none;position:relative;color:var(--dark);}
@@ -185,12 +185,12 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
   #tc{display:block!important;text-align:center;}
   html,body{background:white;margin:0;padding:0;min-height:0!important;height:auto!important;overflow:hidden!important;}
   .content{padding:0;}
-  /* 印刷ヘッダー：シフト表名（小）＋ホテル名（大） */
-  #print-hdr{display:flex!important;align-items:baseline;gap:14px;margin-bottom:4px;margin-top:4mm;}
+  /* 印刷ヘッダー：テーブル左端に揃えて表示 */
+  #print-hdr{display:flex!important;align-items:baseline;gap:14px;margin-bottom:5px;margin-top:0;}
   /* 1ページに収める */
   #tc,#print-wrap,.stbl{page-break-inside:avoid!important;break-inside:avoid!important;}
   #tc{page-break-after:avoid!important;break-after:avoid!important;}
-  #print-wrap{display:inline-block;text-align:left;}
+  #print-wrap{display:inline-block;text-align:left;margin-top:4mm;}
   .swrap{box-shadow:none;border:none;overflow:visible;width:max-content!important;max-width:none!important;border-radius:0;display:block;}
   /* 印刷右下：会社名（非表示） */
   #print-footer{display:none!important;}
@@ -241,11 +241,6 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
 
 <!-- シフト表 -->
 <div id="tc" class="panel active">
-  <!-- 印刷専用ヘッダー（画面では非表示） -->
-  <div id="print-hdr" style="display:none;">
-    <span id="print-title" style="font-size:0.82rem;font-weight:600;color:#555;font-family:'Noto Sans JP',sans-serif;"></span>
-    <span style="font-size:1.15rem;font-weight:700;color:#1c2833;margin-left:16px;font-family:'Noto Sans JP',sans-serif;">ホテルグランビュー石垣 The First</span>
-  </div>
   <div class="stitle">
     <div><div class="sh">シフト表（<span id="clbl">4月</span>）</div><div style="font-size:.72rem;color:var(--mid);margin-top:3px;">ホテルグランビュー石垣 The First</div></div>
     <div style="display:flex;gap:7px;">
@@ -258,6 +253,11 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
     <div class="ld"><div style="width:17px;height:17px;border:3px solid #e05050;border-radius:50%;display:inline-block;"></div>繁忙日(OUT≥30)</div>
   </div>
   <div id="print-wrap">
+    <!-- 印刷専用ヘッダー（テーブル左端に揃える） -->
+    <div id="print-hdr" style="display:none;">
+      <span id="print-title" style="font-size:1.15rem;font-weight:700;color:#1c2833;font-family:'Noto Sans JP',sans-serif;"></span>
+      <span style="font-size:1.15rem;font-weight:700;color:#1c2833;margin-left:16px;font-family:'Noto Sans JP',sans-serif;">ホテルグランビュー石垣 The First</span>
+    </div>
     <div class="swrap" id="ctw"></div>
     <div id="print-footer" style="display:none;"></div>
   </div>
