@@ -98,7 +98,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
 .biko-text{color:#1c2833;font-size:0.85rem;font-weight:700;writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;line-height:1.1;max-height:106px;overflow:hidden;display:inline-block;}
 /* 繁忙赤丸：日付+曜日のセル範囲内にぴったり収まる楕円 */
 .thd{overflow:visible;}
-.busy-ring{position:absolute;top:1px;left:50%;transform:translateX(-50%);width:40px;height:60px;border:2.5px solid #e74c3c;border-radius:20px;pointer-events:none;z-index:5;}
+.busy-ring{position:absolute;top:1px;left:50%;transform:translateX(-50%);width:40px;height:62px;border:2.5px solid #e74c3c;border-radius:20px;pointer-events:none;z-index:5;}
 /* 休み日数（fk列＝紺背景に白文字） */
 .kc{font-size:1.15rem;font-weight:900;line-height:1;}
 .kc.red{color:#ff4444;}   /* 7日以下で赤 */
@@ -195,27 +195,29 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
   /* 印刷右下：会社名 */
   #print-footer{display:block!important;text-align:right;font-size:0.6rem;color:#666;margin-top:3px;font-family:'Noto Sans JP',sans-serif;}
   /* sticky解除（ずれ防止） */
-  .fn{position:relative!important;left:auto!important;font-size:0.72rem;}
-  .fk{position:relative!important;left:auto!important;font-size:0.62rem;}
-  /* ── 枠線：0.5px細線でborder-collapse:separateの2重線を解消 ── */
+  .fn{position:relative!important;left:auto!important;font-size:0.92rem;}
+  .fk{position:relative!important;left:auto!important;font-size:0.7rem;}
+  /* ── 枠線 ── */
   .stbl{border-collapse:separate!important;border-spacing:0!important;}
   #tc td,#tc th{border-right:0.3px solid #666!important;border-bottom:0.3px solid #666!important;}
   #tc tr:first-child td,#tc tr:first-child th,#tc thead td,#tc thead th{border-top:0.3px solid #666!important;}
   #tc td:first-child,#tc th:first-child{border-left:0.3px solid #666!important;}
-  .dc{height:30px;font-size:0.84rem;font-weight:400;}
-  .dc.kyuu{font-weight:400;}
-  .dc.shuts{font-weight:400;}
-  .rout .dc{font-weight:500;}
-  .dck{height:22px;font-size:0.72rem;font-weight:400;}
-  /* 備考セル：高さ拡大＋テキスト切れ防止 */
+  /* データセル：画面に近いサイズ */
+  .dc{height:38px;font-size:1rem;font-weight:900;}
+  .dc.kyuu{font-size:1.2rem;font-weight:600;}
+  .dc.shuts{font-size:1.2rem;font-weight:600;}
+  .rout .dc{font-size:1.2rem;font-weight:900;}
+  .dck{height:26px;font-size:0.78rem;font-weight:700;}
+  /* 備考セル */
   .dcb{height:82px;}
   .hol-name,.biko-text{font-size:0.66rem;max-height:80px;overflow:visible;}
   .dcb-inner{overflow:visible;}
-  .thd{font-size:0.64rem;padding:3px 1px 2px;}
-  .thw{font-size:0.56rem;padding:1px;}
-  .kc{font-size:0.88rem;font-weight:600;}
+  /* 日付・曜日：画面に近いサイズ */
+  .thd{font-size:0.82rem;padding:5px 1px 3px;}
+  .thw{font-size:0.7rem;padding:2px 1px 5px;font-weight:700;}
+  .kc{font-size:0.9rem;font-weight:700;}
   .kc.red{color:#ff2222!important;}
-  .busy-ring{width:28px;height:38px;border-width:1.5px;border-radius:14px;top:2px;}
+  .busy-ring{width:28px;height:40px;border-width:1.5px;border-radius:14px;top:2px;}
 }
 </style>
 </head>
