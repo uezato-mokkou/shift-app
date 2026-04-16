@@ -562,8 +562,12 @@ function cntKyuu(y,m,nm){
   let c=0;for(let d=1;d<=dim(y,m);d++){const v=SD[y][m][nm][d]||'';if(v==='kyuu'||v==='adj')c++;}return c;
 }
 function cntBath(y,m,nm){
-  if(!SD[y]||!SD[y][m]||!SD[y][m][nm])return 0;
-  let c=0;for(let d=1;d<=dim(y,m);d++){const v=SD[y][m][nm][d]||'';if(v==='kyuu'||v==='adj')c++;}return c;
+  // 大浴場スタッフ：「出」が1つ以上あれば空白日数を休日数として返す。「出」がなければ null（非表示）
+  if(!SD[y]||!SD[y][m]||!SD[y][m][nm])return null;
+  const n=dim(y,m);
+  let hasShutsu=false,blank=0;
+  for(let d=1;d<=n;d++){const v=SD[y][m][nm][d]||'';if(v==='出')hasShutsu=true;if(v==='')blank++;}
+  return hasShutsu?blank:null;
 }
 
 // ─── タブ ───
@@ -743,7 +747,7 @@ function buildBathRows(y,m,n){
   let h='';
   BATH.forEach(bsnm=>{
     const bc=cntBath(y,m,bsnm);
-    h+=`<tr class="rkar"><td class="fn">${bsnm}</td><td class="fk"><span class="kc ${bc===0?'ok':bc<=7?'red':'ok'}">${bc===0?'':bc}</span></td>`;
+    h+=`<tr class="rkar"><td class="fn">${bsnm}</td><td class="fk"><span class="kc ${bc===null||bc>7?'ok':'red'}">${bc===null?'':bc}</span></td>`;
     for(let d=1;d<=n;d++){
       const v=SD[y]&&SD[y][m]&&SD[y][m][bsnm]?SD[y][m][bsnm][d]||'':'';
       const bg=v?dcBg(y,m,d,v):(isSat(y,m,d)?'var(--sat)':isHol(y,m,d)?'var(--sun)':'#fff');
@@ -764,7 +768,7 @@ function drawInput(y,m,wid,fname){
   const cnt=isBath?cntBath(y,m,fname):cntKyuu(y,m,fname);
   const locked=isLocked()&&!isAdmin;
   let h=buildHdr(y,m,n,busy);
-  h+=`<tr><td class="fn">${fname}</td><td class="fk"><span class="kc ${cnt<=7?'red':'ok'}">${cnt}</span></td>`;
+  h+=`<tr><td class="fn">${fname}</td><td class="fk"><span class="kc ${cnt===null||cnt>7?'ok':'red'}">${cnt===null?'':cnt}</span></td>`;
   for(let d=1;d<=n;d++){
     const v=SD[y][m][fname]?SD[y][m][fname][d]||'':'';
     const bg=dcBg(y,m,d,v);const col=dcColor(v);
@@ -1195,7 +1199,7 @@ function exportCSV(){
   for(let d=1;d<=n;d++)c+=','+d+'日('+WN[getWD(CY,CM,d)]+')';c+='\n';
   ALL().forEach(nm=>{
     const isBath=BATH.includes(nm);const cnt=isBath?cntBath(CY,CM,nm):cntKyuu(CY,CM,nm);
-    c+=nm+','+cnt;
+    c+=nm+','+(cnt===null?'':cnt);
     for(let d=1;d<=n;d++){const v=SD[CY][CM][nm]?SD[CY][CM][nm][d]||'':'';c+=','+dcText(v);}c+='\n';
   });
   const b=new Blob(['\uFEFF'+c],{type:'text/csv;charset=utf-8;'});
