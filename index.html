@@ -75,6 +75,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
 #ctw .dc.kyuu,#mwrap .dc.kyuu{color:var(--dark)!important;}
 .dc.noclick{cursor:default;}
 .dc:not(.noclick):active{filter:brightness(0.88);}
+.dc.cell-sel{outline:3px solid #f39c12!important;outline-offset:-3px;position:relative;z-index:20;}
 /* 出人員行 */
 .rout .dc{background:#edf6ef!important;color:#1a7a40;font-weight:900;font-size:1.5rem;cursor:default;}
 .rout .dc.sat{background:#d8eedd!important;}.rout .dc.sun{background:#e4f0e6!important;}
@@ -783,6 +784,7 @@ function drawInput(y,m,wid,fname){
     w.querySelector('.stbl').addEventListener('click',e=>{
       const td=e.target.closest('td[data-n]');if(!td)return;
       e.stopPropagation();
+      setSelTd(td);
       const nm=td.dataset.n,d=+td.dataset.d,yy=+td.dataset.y,mm=+td.dataset.m;
       cpCB=(val)=>{SD[yy][mm][nm][d]=val;drawInput(yy,mm,wid,fname);};
       if(BATH.includes(nm))showBathPop(e,td,nm,yy,mm,d);
@@ -863,6 +865,7 @@ function drawAdjTable(){
   w.querySelector('.stbl').addEventListener('click',e=>{
     const td=e.target.closest('td[data-n]');if(!td)return;
     e.stopPropagation();
+    setSelTd(td);
     const nm=td.dataset.n,d=+td.dataset.d,yy=+td.dataset.y,mm=+td.dataset.m;
     cpCB=(val)=>{SD[yy][mm][nm][d]=val;drawAdjTable();addLog('チーフ','調整',nm+' '+d+'日→'+(val||'クリア'));};
     if(BATH.includes(nm))showBathPopAdj(e,td,nm,yy,mm,d);
@@ -934,7 +937,16 @@ function showBathPop(e,tdEl,nm,y,m,d){
   items.push({l:'クリア(出)',c:'cl',v:''});
   showPopup(e,tdEl,items,d+'日 / '+nm);
 }
-function hidePopup(){ document.getElementById('cpopup').style.display='none'; }
+let _selTd=null;
+function setSelTd(td){
+  if(_selTd)_selTd.classList.remove('cell-sel');
+  _selTd=td||null;
+  if(_selTd)_selTd.classList.add('cell-sel');
+}
+function hidePopup(){
+  document.getElementById('cpopup').style.display='none';
+  setSelTd(null);
+}
 
 // ─── Groq APIキー ───
 function renderGroqKeyArea(){
