@@ -180,7 +180,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(70px);background:#1c2833;color:white;padding:10px 20px;border-radius:24px;font-size:0.82rem;font-weight:600;box-shadow:0 4px 18px rgba(0,0,0,0.25);transition:transform 0.3s ease;z-index:999;white-space:nowrap;}
 @media print{
   /* A4横：297mm 余白5mm×2=10mm → 幅287mm≈1085px / 高さ210mm 余白6mm×2=12mm → 高さ198mm≈748px */
-  @page{size:A4 landscape;margin:6mm 5mm;}
+  @page{size:A4 landscape;margin:6mm 5mm 0mm 5mm;}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;}
   /* 列幅：nw:76+kw:34+dw:31×31=1071px ≤ 1085px ✓ */
   :root{--nw:76px;--kw:34px;--dw:31px;}
@@ -1262,6 +1262,8 @@ function showToast(msg){
 
 // ─── 印刷時：border-collapse:separateで枠線を確実に表示 ───
 window.addEventListener('beforeprint',function(){
+  // スマホ（viewport幅＜700px）は85%縮小で1ページに収める
+  if(window.innerWidth<700){document.documentElement.style.zoom='0.85';}
   // テーブルをseparateに切り替え（各セルの枠線を独立させる）
   const tbl=document.querySelector('#tc .stbl');
   if(tbl){tbl.style.setProperty('border-collapse','separate','important');tbl.style.setProperty('border-spacing','0','important');}
@@ -1283,6 +1285,8 @@ window.addEventListener('beforeprint',function(){
   });
 });
 window.addEventListener('afterprint',function(){
+  // スマホzoomリセット
+  document.documentElement.style.zoom='';
   // 印刷後はborderをリセット（画面表示に戻す）
   const tbl=document.querySelector('#tc .stbl');
   if(tbl){tbl.style.removeProperty('border-collapse');tbl.style.removeProperty('border-spacing');}
