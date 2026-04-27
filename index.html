@@ -23,6 +23,7 @@
   --dark:#2c3e50; --mid:#7a8e9a; --bd:#cdd8e0;
   --green:#1a8a3a; --grn:#1a8a3a;
   --adj:#7c3aed; --adjBg:#f0edff; --adjl:#f0edff;
+  --yuu:#d97706; --yuuBg:#fffbeb;
   --sh:0 2px 10px rgba(0,0,0,0.06);
   --nw:80px; --kw:44px; --dw:44px;
 }
@@ -71,6 +72,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
 .dc.kyuu{background:transparent;color:var(--green)!important;font-size:1.5rem;font-weight:600;}
 .dc.shuts{background:transparent;font-size:1.5rem;font-weight:600;}
 .dc.adj{background:var(--adjBg);color:var(--adj)!important;}
+.dc.yukyuu{background:transparent;color:var(--yuu)!important;font-size:1.5rem;font-weight:600;}
 /* シフト表（全員閲覧画面）では休を黒文字に */
 #ctw .dc.kyuu,#mwrap .dc.kyuu{color:var(--dark)!important;}
 .dc.noclick{cursor:default;}
@@ -166,6 +168,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
 .copt.aj{border-color:var(--adj);color:var(--adj);background:var(--adjBg);}
 .copt.cl{border-color:#bbb;color:#888;}
 .copt.cu{border-color:var(--P);color:var(--P);background:var(--PL);}
+.copt.yg{border-color:var(--yuu);color:var(--yuu);background:var(--yuuBg);}
 .copt:active{filter:brightness(0.85);}
 /* モーダル（全画面スケーリング対応） */
 .mov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:500;}
@@ -208,6 +211,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
   /* データセル（10行×42px=420px） */
   .dc{height:42px;font-size:1.05rem;font-weight:900;}
   .dc.kyuu{font-size:1.25rem;font-weight:600;}
+  .dc.yukyuu{font-size:1.25rem;font-weight:600;}
   .dc.shuts{font-size:1.25rem;font-weight:600;}
   .rout .dc{font-size:1.25rem;font-weight:900;}
   /* OUT/Stay/IN行：高さ抑制（3行×22px=66px） */
@@ -333,10 +337,11 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
     <!-- シフト最終調整 -->
     <div class="acard">
       <h3>🎛 シフト最終調整</h3>
-      <p style="font-size:.76rem;color:var(--mid);margin-bottom:10px;">セルをタップ → 希望休(緑)・調整休(紫)・カスタム値・クリア を設定できます。</p>
+      <p style="font-size:.76rem;color:var(--mid);margin-bottom:10px;">セルをタップ → 希望休(緑)・調整休(紫)・有給(橙)・カスタム値・クリア を設定できます。</p>
       <div class="lgd">
         <div class="ld"><div class="ldot" style="background:#fff;border:2px solid var(--grn);"></div>希望休（緑文字）</div>
         <div class="ld"><div class="ldot" style="background:var(--adjl);border:2px solid var(--adj);"></div>調整休（紫）</div>
+        <div class="ld"><div class="ldot" style="background:var(--yuuBg);border:2px solid var(--yuu);"></div>有給（橙）</div>
       </div>
       <div class="swrap" id="adj-wrap"></div>
     </div>
@@ -461,19 +466,21 @@ async function sbFetch(path,method='GET',body=null){
   if(body)opts.body=JSON.stringify(body);
   const res=await fetch(SUPABASE_URL+'/rest/v1/'+path,opts);
   const text=await res.text();
-  return text?JSON.parse(text):null;
+  const data=text?JSON.parse(text):null;
+  if(!res.ok)throw new Error('HTTP '+res.status+': '+JSON.stringify(data));
+  return data;
 }
 
-// クラウド保存
+// クラウド保存（UPSERTで簡潔に・updated_at不要）
 async function saveToCloud(key,value){
   try{
-    const existing=await sbFetch('shift_app_data?key=eq.'+encodeURIComponent(key));
-    if(existing&&existing.length>0){
-      await sbFetch('shift_app_data?key=eq.'+encodeURIComponent(key),'PATCH',{value,updated_at:new Date().toISOString()});
-    }else{
-      await sbFetch('shift_app_data','POST',{key,value});
-    }
-  }catch(e){console.warn('クラウド保存エラー:',e);}
+    await sbFetch('shift_app_data','POST',{key,value});
+  }catch(e){
+    // INSERT失敗（重複）の場合はPATCHで上書き
+    try{
+      await sbFetch('shift_app_data?key=eq.'+encodeURIComponent(key),'PATCH',{value});
+    }catch(e2){console.warn('クラウド保存エラー['+key+']:',e2);}
+  }
 }
 async function loadFromCloud(key){
   try{
@@ -484,19 +491,28 @@ async function loadFromCloud(key){
 
 // 全データをクラウドに保存（デバウンス付き）
 let lastModifiedTime='';
+let hasPendingChanges=false;
 function scheduleCloudSave(){
+  hasPendingChanges=true;
   if(cloudSaveTimer)clearTimeout(cloudSaveTimer);
   cloudSaveTimer=setTimeout(()=>saveAllToCloud(),2000);
 }
 async function saveAllToCloud(){
   const now=new Date().toISOString();
-  saveToLocalBackup(now); // まずlocalStorageに即時保存
-  await Promise.all([
-    saveToCloud('staff',{STAFF,BATH,CUSTOM}),
-    saveToCloud('last_modified',now),
-    ...Object.keys(SD).flatMap(y=>Object.keys(SD[y]).map(m=>saveToCloud('shift_'+y+'_'+m,{sd:SD[y][m],kd:KD[y]?.[m],biko:BIKO[y]?.[m]}))),
-  ]);
-  lastModifiedTime=now;
+  saveToLocalBackup(now);
+  try{
+    await Promise.all([
+      saveToCloud('staff',{STAFF,BATH,CUSTOM}),
+      saveToCloud('last_modified',now),
+      ...Object.keys(SD).flatMap(y=>Object.keys(SD[y]).map(m=>saveToCloud('shift_'+y+'_'+m,{sd:SD[y][m],kd:KD[y]?.[m],biko:BIKO[y]?.[m]}))),
+    ]);
+    lastModifiedTime=now;
+    hasPendingChanges=false;
+    showToast('✅ クラウドに保存しました');
+  }catch(e){
+    console.warn('クラウド保存失敗:',e);
+    showToast('⚠️ クラウド保存に失敗しました（ローカルには保存済み）');
+  }
 }
 
 // ─── localStorageバックアップ（クラウド障害・ブラウザ終了対策） ───
@@ -566,7 +582,7 @@ initM(2026,4);initM(2026,5);
 // 休み数カウント
 function cntKyuu(y,m,nm){
   if(!SD[y]||!SD[y][m]||!SD[y][m][nm])return 0;
-  let c=0;for(let d=1;d<=dim(y,m);d++){const v=SD[y][m][nm][d]||'';if(v==='kyuu'||v==='adj')c++;}return c;
+  let c=0;for(let d=1;d<=dim(y,m);d++){const v=SD[y][m][nm][d]||'';if(v==='kyuu'||v==='adj'||v==='yuu')c++;}return c;
 }
 function cntBath(y,m,nm){
   // 大浴場スタッフ：「出」が1つ以上あれば空白日数を休日数として返す。「出」がなければ null（非表示）
@@ -675,7 +691,7 @@ function saveShift(){
 
 // ─── セル表示ヘルパー ───
 function dcBg(y,m,d,v){
-  if(v==='kyuu'||v==='出'){
+  if(v==='kyuu'||v==='出'||v==='yuu'){
     if(isSat(y,m,d))return 'var(--sat)';  // 土曜色を維持
     if(isHol(y,m,d))return 'var(--sun)';  // 日祝色を維持
     return 'transparent';
@@ -691,18 +707,20 @@ function dcBg(y,m,d,v){
 }
 function dcText(v){
   if(v==='kyuu'||v==='adj')return '休';
+  if(v==='yuu')return '有';
   if(!v)return '';
   // カスタム値（10-13など）は小さいフォント+折り返しなし
   if(v.length>2)return `<span style="font-size:0.68rem;white-space:nowrap;display:block;line-height:1.2;">${v}</span>`;
   return v;
 }
 function dcClass(v,y,m,d){
-  let c='dc ';c+=v==='kyuu'?'kyuu ':v==='adj'?'adj ':v==='出'?'shuts ':'';
+  let c='dc ';c+=v==='kyuu'?'kyuu ':v==='adj'?'adj ':v==='出'?'shuts ':v==='yuu'?'yukyuu ':'';
   c+=isSat(y,m,d)?'sat ':isHol(y,m,d)?'sun ':'';return c.trim();
 }
 function dcColor(v){
   if(v==='kyuu')return 'color:var(--green);';
   if(v==='adj')return 'color:var(--adj);';
+  if(v==='yuu')return 'color:var(--yuu);';
   return 'color:var(--dark);';
 }
 
@@ -719,7 +737,7 @@ function buildShutsu(y,m,n){
   let h='<tr class="rout"><td class="fn">出人員</td><td class="fk lbl"></td>';
   for(let d=1;d<=n;d++){
     const s=isSat(y,m,d),sh=isHol(y,m,d);
-    let c=0;STAFF.forEach(nm=>{const v=SD[y]&&SD[y][m]&&SD[y][m][nm]?SD[y][m][nm][d]||'':'';if(v!=='kyuu'&&v!=='adj')c++;});
+    let c=0;STAFF.forEach(nm=>{const v=SD[y]&&SD[y][m]&&SD[y][m][nm]?SD[y][m][nm][d]||'':'';if(v!=='kyuu'&&v!=='adj'&&v!=='yuu')c++;});
     h+=`<td class="dc ${s?'sat':sh?'sun':''}" style="cursor:default;">${c}</td>`;
   }
   return h+'</tr>';
@@ -800,7 +818,7 @@ function drawInput(y,m,wid,fname){
 // ─── 全体シフト ───
 // 全体シフト用：「休」「調整休」を区別なく同じスタイルで表示
 function chiefCellBg(y,m,d,v){
-  if(v==='kyuu'||v==='adj'||v==='出'){
+  if(v==='kyuu'||v==='adj'||v==='出'||v==='yuu'){
     // シフト表では調整休も通常の休と同じ表示（紫背景なし）
     if(isSat(y,m,d))return 'var(--sat)';
     if(isHol(y,m,d))return 'var(--sun)';
@@ -812,12 +830,14 @@ function chiefCellBg(y,m,d,v){
 }
 function chiefCellColor(v){
   if(v==='kyuu'||v==='adj')return 'color:var(--green);';
+  if(v==='yuu')return 'color:var(--yuu);';
   return 'color:var(--dark);';
 }
 function chiefCellClass(v,y,m,d){
   // 調整休も「kyuu」と同じCSSクラスで表示（色分けなし）
   let c='dc ';
   if(v==='kyuu'||v==='adj')c+='kyuu ';
+  else if(v==='yuu')c+='yukyuu ';
   c+=isSat(y,m,d)?'sat ':isHol(y,m,d)?'sun ':'';
   return c.trim();
 }
@@ -857,7 +877,7 @@ function drawAdjTable(){
       const v=SD[y][m][nm]?SD[y][m][nm][d]||'':'';
       const bg=dcBg(y,m,d,v);const col=dcColor(v);
       // noclick を付けない（クリック必須）
-      const cls='dc '+(v==='kyuu'?'kyuu ':v==='adj'?'adj ':v==='出'?'shuts ':'')+(isSat(y,m,d)?'sat ':isHol(y,m,d)?'sun ':'');
+      const cls='dc '+(v==='kyuu'?'kyuu ':v==='adj'?'adj ':v==='出'?'shuts ':v==='yuu'?'yukyuu ':'')+(isSat(y,m,d)?'sat ':isHol(y,m,d)?'sun ':'');
       h+=`<td class="${cls.trim()}" style="background:${bg};${col};cursor:pointer;" data-n="${nm}" data-d="${d}" data-y="${y}" data-m="${m}">${dcText(v)}</td>`;
     }
     h+='</tr>';
@@ -871,7 +891,7 @@ function drawAdjTable(){
     e.stopPropagation();
     setSelTd(td);
     const nm=td.dataset.n,d=+td.dataset.d,yy=+td.dataset.y,mm=+td.dataset.m;
-    cpCB=(val)=>{SD[yy][mm][nm][d]=val;drawAdjTable();addLog('チーフ','調整',nm+' '+d+'日→'+(val||'クリア'));};
+    cpCB=(val)=>{SD[yy][mm][nm][d]=val;drawAdjTable();scheduleCloudSave();addLog('チーフ','調整',nm+' '+d+'日→'+(val||'クリア'));};
     if(BATH.includes(nm))showBathPopAdj(e,td,nm,yy,mm,d);
     else showAdjPop(e,td,nm,yy,mm,d);
   });
@@ -905,13 +925,10 @@ function showPopup(e, tdEl, items, title){
 // 通常スタッフ（個人入力・全体シフト用）
 function showPop(e,tdEl,nm,y,m,d,adjMode){
   const customs=CUSTOM[nm]||[];
-  if(!adjMode && customs.length===0){
-    const cur=SD[y]&&SD[y][m]&&SD[y][m][nm]?SD[y][m][nm][d]||'':'';
-    cpCB&&cpCB(cur==='kyuu'?'':'kyuu'); return;
-  }
   const items=[];
   if(adjMode) items.push({l:'調整休',c:'aj',v:'adj'});
   items.push({l:'休',c:'ky',v:'kyuu'});
+  items.push({l:'有給',c:'yg',v:'yuu'});
   customs.forEach(cv=>items.push({l:cv,c:'cu',v:cv}));
   items.push({l:'クリア',c:'cl',v:''});
   showPopup(e,tdEl,items,d+'日 / '+nm);
@@ -919,7 +936,7 @@ function showPop(e,tdEl,nm,y,m,d,adjMode){
 // 調整専用（必ずポップアップ）
 function showAdjPop(e,tdEl,nm,y,m,d){
   const customs=CUSTOM[nm]||[];
-  const items=[{l:'調整休',c:'aj',v:'adj'},{l:'休',c:'ky',v:'kyuu'}];
+  const items=[{l:'調整休',c:'aj',v:'adj'},{l:'休',c:'ky',v:'kyuu'},{l:'有給',c:'yg',v:'yuu'}];
   customs.forEach(cv=>items.push({l:cv,c:'cu',v:cv}));
   items.push({l:'クリア',c:'cl',v:''});
   showPopup(e,tdEl,items,d+'日 / '+nm+' 【調整】');
@@ -1278,25 +1295,26 @@ renderNames();initM(CY,CM);
 {const _pt=document.getElementById('print-title');if(_pt)_pt.textContent='シフト表（'+CM+'月）';}
 // クラウドからデータ読み込み後に描画
 (async()=>{
-  // クラウドから読み込み
+  // クラウドから読み込み（成功したら常にクラウドを優先）
   const loaded=await loadAllFromCloud();
-  if(loaded) ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
-  // クラウドのlast_modified取得
   const cloudLm=await loadFromCloud('last_modified')||'';
-  // localStorageのバックアップ時刻と比較
-  const localLm=localStorage.getItem('shiftbk_modified')||'';
-  if(localLm>cloudLm){
-    // localStorageの方が新しい → 復元してクラウドへ同期
-    loadFromLocalBackup();
+  if(loaded){
+    // クラウード読み込み成功 → クラウドデータを使用（localStorageで絶対に上書きしない）
     ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
-    showToast('💾 未同期のローカルデータを復元しました。クラウドへ同期中…');
-    await saveAllToCloud();
-    showToast('✅ クラウドへの同期が完了しました');
-  } else if(loaded){
     showToast('☁️ クラウドからデータを読み込みました');
-    saveToLocalBackup(cloudLm); // クラウドデータをlocalStorageにもバックアップ
+    const ts=cloudLm||new Date().toISOString();
+    saveToLocalBackup(ts); // クラウドデータをlocalStorageにもバックアップ
+    lastModifiedTime=ts;
+  } else {
+    // クラウド読み込み失敗時のみlocalStorageから復元
+    const localLm=localStorage.getItem('shiftbk_modified')||'';
+    if(localLm){
+      loadFromLocalBackup();
+      ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
+      showToast('📴 オフライン：ローカルデータを使用しています');
+    }
+    lastModifiedTime=localLm;
   }
-  lastModifiedTime=cloudLm||localLm;
   // Groq APIキーをクラウドから取得（全端末共有）
   const cloudGroqKey=await loadFromCloud('groq_api_key');
   if(cloudGroqKey){
@@ -1322,6 +1340,7 @@ renderNames();initM(CY,CM);
 // ─── リアルタイム同期ポーリング（30秒ごと） ───
 async function pollForUpdates(){
   try{
+    if(hasPendingChanges)return; // 未保存変更がある間はスキップ
     const lm=await loadFromCloud('last_modified');
     if(lm&&lm!==lastModifiedTime&&lastModifiedTime!==''){
       // 編集中（シフト入力画面が開いている）は上書きしない
