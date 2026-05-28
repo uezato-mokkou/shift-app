@@ -179,21 +179,22 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
 .mbdy{overflow:hidden;flex:1;position:relative;background:#f0f4f8;}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(70px);background:#1c2833;color:white;padding:10px 20px;border-radius:24px;font-size:0.82rem;font-weight:600;box-shadow:0 4px 18px rgba(0,0,0,0.25);transition:transform 0.3s ease;z-index:999;white-space:nowrap;}
 @media print{
-  /* A4横：297mm 余白5mm×2=10mm → 幅287mm≈1085px / 高さ210mm 余白6mm×2=12mm → 高さ198mm≈748px */
-  @page{size:A4 landscape;margin:6mm 5mm 0mm 5mm;}
+  /* A4横：margin:0でiOSブラウザのURL・日付フッターを除去。余白はbodyのpaddingで制御 */
+  @page{size:A4 landscape;margin:0;}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;}
   /* 列幅：nw:76+kw:34+dw:31×31=1071px ≤ 1085px ✓ */
   :root{--nw:76px;--kw:34px;--dw:31px;}
   header,.tab-nav,.abar,.lgd,.msel,.deadline-notice,.locked-banner,#ti,#tp,#ta,.stitle{display:none!important;}
   #tc{display:block!important;text-align:center;}
-  html,body{background:white;margin:0;padding:0;min-height:0!important;height:auto!important;overflow:visible!important;}
+  html,body{background:white;margin:0;padding:6mm 5mm 0 5mm!important;min-height:0!important;height:auto!important;overflow:visible!important;}
   .content{padding:0;}
   /* 印刷ヘッダー：テーブル左端に揃えて表示 */
   #print-hdr{display:flex!important;align-items:baseline;gap:14px;margin-bottom:5px;margin-top:0;}
   /* 1ページに収める */
   #tc,#print-wrap,.stbl{page-break-inside:avoid!important;break-inside:avoid!important;}
   #tc{page-break-after:avoid!important;break-after:avoid!important;}
-  #print-wrap{display:inline-block;text-align:left;margin-top:4mm;}
+  /* 中央寄せ：width:fit-content + margin:auto */
+  #print-wrap{display:block!important;width:-webkit-fit-content!important;width:fit-content!important;margin:0 auto!important;text-align:left;}
   .swrap{box-shadow:none;border:none;overflow:visible;width:max-content!important;max-width:none!important;border-radius:0;display:block;}
   /* 印刷右下：会社名（非表示） */
   #print-footer{display:none!important;}
@@ -1380,12 +1381,18 @@ function showToast(msg){
 
 // ─── 印刷時：border-collapse:separateで枠線を確実に表示 ───
 window.addEventListener('beforeprint',function(){
-  // スマホ（viewport幅＜700px）は85%縮小で1ページに収める
-  // iOS Safariはzoomが効かない場合があるため#print-wrapにtransformも併用
-  if(window.innerWidth<700){
-    document.documentElement.style.zoom='0.85';
-    const pw=document.getElementById('print-wrap');
-    if(pw){pw.style.setProperty('transform','scale(0.85)','important');pw.style.setProperty('transform-origin','top left','important');}
+  // スタッフ数に応じて自動縮小（A4横 210mm=794px、body上padding 6mm=23px → 使用可能高さ≈770px）
+  const pw=document.getElementById('print-wrap');
+  if(pw){
+    pw.style.removeProperty('zoom');
+    pw.style.removeProperty('transform');
+    pw.style.removeProperty('transform-origin');
+    const maxH=770;
+    const h=pw.scrollHeight;
+    if(h>maxH){
+      const scale=+(maxH/h).toFixed(3);
+      pw.style.setProperty('zoom',String(scale),'important');
+    }
   }
   // テーブルをseparateに切り替え（各セルの枠線を独立させる）
   const tbl=document.querySelector('#tc .stbl');
@@ -1408,10 +1415,9 @@ window.addEventListener('beforeprint',function(){
   });
 });
 window.addEventListener('afterprint',function(){
-  // スマホzoomリセット
   document.documentElement.style.zoom='';
   const pw=document.getElementById('print-wrap');
-  if(pw){pw.style.removeProperty('transform');pw.style.removeProperty('transform-origin');}
+  if(pw){pw.style.removeProperty('zoom');pw.style.removeProperty('transform');pw.style.removeProperty('transform-origin');}
   // 印刷後はborderをリセット（画面表示に戻す）
   const tbl=document.querySelector('#tc .stbl');
   if(tbl){tbl.style.removeProperty('border-collapse');tbl.style.removeProperty('border-spacing');}
