@@ -334,6 +334,13 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
         <button class="btn btn-s bsm" onclick="changeCurMonth()">月変更</button>
       </div>
     </div>
+    <!-- 緊急データ復元 -->
+    <div class="acard" style="border:2px solid #ef4444;">
+      <h3 style="color:#ef4444;">🆘 緊急データ復元</h3>
+      <p style="font-size:.76rem;color:var(--mid);margin-bottom:10px;">データが消えた場合に使用してください。</p>
+      <button class="btn btn-a bsm" style="background:#ef4444;width:100%;margin-bottom:8px;" onclick="runDiagnosis()">🔍 データ診断を実行</button>
+      <div id="diag-result" style="font-size:.75rem;color:var(--dark);background:#f8f9fa;border-radius:8px;padding:10px;display:none;margin-top:8px;white-space:pre-wrap;word-break:break-all;"></div>
+    </div>
     <!-- シフト最終調整 -->
     <div class="acard">
       <h3>🎛 シフト最終調整</h3>
@@ -1240,6 +1247,97 @@ function exportCSV(){
   const b=new Blob(['\uFEFF'+c],{type:'text/csv;charset=utf-8;'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='シフト表_'+CY+'年'+CM+'月.csv';a.click();
   showToast('📥 CSVをダウンロードしました');
+}
+
+// ─── 緊急データ診断・復元 ───
+async function runDiagnosis(){
+  const el=document.getElementById('diag-result');
+  el.style.display='block';
+  el.textContent='🔍 診断中...';
+  let out='';
+
+  // ① localStorageの状態
+  out+='【localStorage】\n';
+  const localLm=localStorage.getItem('shiftbk_modified')||'';
+  out+='  last_modified: '+(localLm||'(なし)')+'\n';
+  const lsMonths=[[2026,4],[2026,5],[2026,6],[2026,7],[2026,8],[2026,9]];
+  let lsHasData=false;
+  lsMonths.forEach(([y,m])=>{
+    const raw=localStorage.getItem('shiftbk_'+y+'_'+m);
+    if(raw){
+      try{
+        const d=JSON.parse(raw);
+        const sd=d.sd||{};
+        const names=Object.keys(sd);
+        let cells=0;
+        names.forEach(n=>{cells+=Object.values(sd[n]||{}).filter(v=>v&&v!=='').length;});
+        out+='  '+y+'/'+m+': '+names.length+'名, 入力済'+cells+'マス\n';
+        if(cells>0)lsHasData=true;
+      }catch(e){out+='  '+y+'/'+m+': パースエラー\n';}
+    }else{out+='  '+y+'/'+m+': (なし)\n';}
+  });
+  out+='  → データあり: '+(lsHasData?'✅ YES':'❌ なし')+'\n\n';
+
+  // ② Supabaseの状態
+  out+='【Supabase (クラウド)】\n';
+  const cloudLm=await loadFromCloud('last_modified')||'';
+  out+='  last_modified: '+(cloudLm||'(なし)')+'\n';
+  let cloudHasData=false;
+  for(const [y,m] of lsMonths){
+    const d=await loadFromCloud('shift_'+y+'_'+m);
+    if(d&&d.sd){
+      const names=Object.keys(d.sd);
+      let cells=0;
+      names.forEach(n=>{cells+=Object.values(d.sd[n]||{}).filter(v=>v&&v!=='').length;});
+      out+='  '+y+'/'+m+': '+names.length+'名, 入力済'+cells+'マス\n';
+      if(cells>0)cloudHasData=true;
+    }else{out+='  '+y+'/'+m+': (なし)\n';}
+  }
+  out+='  → データあり: '+(cloudHasData?'✅ YES':'❌ なし')+'\n\n';
+
+  // ③ 復元提案
+  out+='【復元オプション】\n';
+  if(lsHasData){
+    out+='✅ localStorageにデータあり → 下の「ローカルから復元」ボタンを押してください\n';
+    el.textContent=out;
+    // 復元ボタン追加
+    const btn=document.createElement('button');
+    btn.className='btn btn-a bsm';
+    btn.style.cssText='background:#22c55e;width:100%;margin-top:8px;';
+    btn.textContent='✅ localStorageから復元してクラウドへ保存';
+    btn.onclick=async()=>{
+      loadFromLocalBackup();
+      ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
+      renderNames();drawChief(CY,CM,'ctw',false);
+      if(document.getElementById('ta').classList.contains('active')&&isAdmin){drawKI();drawBikoInput();drawAdjTable();}
+      await saveAllToCloud();
+      showToast('✅ 復元・クラウド同期完了');
+      btn.remove();
+      el.textContent=out+'→ 復元完了！';
+    };
+    el.appendChild(btn);
+  } else if(cloudHasData){
+    out+='✅ Supabaseにデータあり → 下の「クラウドから復元」ボタンを押してください\n';
+    el.textContent=out;
+    const btn=document.createElement('button');
+    btn.className='btn btn-a bsm';
+    btn.style.cssText='background:#3b82f6;width:100%;margin-top:8px;';
+    btn.textContent='✅ Supabaseから再読み込みして復元';
+    btn.onclick=async()=>{
+      await loadAllFromCloud();
+      ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
+      renderNames();drawChief(CY,CM,'ctw',false);
+      if(document.getElementById('ta').classList.contains('active')&&isAdmin){drawKI();drawBikoInput();drawAdjTable();}
+      showToast('✅ Supabaseから復元しました');
+      btn.remove();
+      el.textContent=out+'→ 復元完了！';
+    };
+    el.appendChild(btn);
+  } else {
+    out+='❌ どちらにもデータが見つかりません。\n';
+    out+='→ 他の端末（まだリロードしていないスマホ・PC）でこの診断を実行してください。\n';
+    el.textContent=out;
+  }
 }
 
 // ─── ログ ───
