@@ -478,21 +478,23 @@ async function sbFetch(path,method='GET',body=null){
   return data;
 }
 
-// クラウド保存（UPSERTで簡潔に・updated_at不要）
+// クラウド保存（GET→存在確認→PATCH or POST。updated_at不要）
 async function saveToCloud(key,value){
   try{
-    await sbFetch('shift_app_data','POST',{key,value});
-  }catch(e){
-    // INSERT失敗（重複）の場合はPATCHで上書き
-    try{
+    const existing=await sbFetch('shift_app_data?key=eq.'+encodeURIComponent(key)+'&limit=1');
+    if(existing&&existing.length>0){
       await sbFetch('shift_app_data?key=eq.'+encodeURIComponent(key),'PATCH',{value});
-    }catch(e2){console.warn('クラウド保存エラー['+key+']:',e2);}
-  }
+    }else{
+      await sbFetch('shift_app_data','POST',{key,value});
+    }
+  }catch(e){console.warn('クラウド保存エラー['+key+']:',e);}
 }
 async function loadFromCloud(key){
   try{
+    // 重複行がある場合に備え全行取得して最後（最新）を返す
     const rows=await sbFetch('shift_app_data?key=eq.'+encodeURIComponent(key));
-    return rows&&rows.length>0?rows[0].value:null;
+    if(!rows||rows.length===0)return null;
+    return rows[rows.length-1].value; // 最後の行＝最新データ
   }catch(e){console.warn('クラウド読み込みエラー:',e);return null;}
 }
 
@@ -1253,91 +1255,109 @@ function exportCSV(){
 async function runDiagnosis(){
   const el=document.getElementById('diag-result');
   el.style.display='block';
-  el.textContent='🔍 診断中...';
+  el.textContent='🔍 診断中（Supabaseの全行を確認しています）...';
+  // 既存ボタンを削除
+  el.querySelectorAll('button').forEach(b=>b.remove());
   let out='';
 
   // ① localStorageの状態
   out+='【localStorage】\n';
   const localLm=localStorage.getItem('shiftbk_modified')||'';
   out+='  last_modified: '+(localLm||'(なし)')+'\n';
-  const lsMonths=[[2026,4],[2026,5],[2026,6],[2026,7],[2026,8],[2026,9]];
+  const months=[[2026,4],[2026,5],[2026,6],[2026,7],[2026,8],[2026,9]];
   let lsHasData=false;
-  lsMonths.forEach(([y,m])=>{
+  months.forEach(([y,m])=>{
     const raw=localStorage.getItem('shiftbk_'+y+'_'+m);
     if(raw){
       try{
-        const d=JSON.parse(raw);
-        const sd=d.sd||{};
-        const names=Object.keys(sd);
-        let cells=0;
+        const d=JSON.parse(raw);const sd=d.sd||{};
+        const names=Object.keys(sd);let cells=0;
         names.forEach(n=>{cells+=Object.values(sd[n]||{}).filter(v=>v&&v!=='').length;});
-        out+='  '+y+'/'+m+': '+names.length+'名, 入力済'+cells+'マス\n';
+        out+='  '+y+'/'+m+': '+names.length+'名, '+cells+'マス\n';
         if(cells>0)lsHasData=true;
       }catch(e){out+='  '+y+'/'+m+': パースエラー\n';}
     }else{out+='  '+y+'/'+m+': (なし)\n';}
   });
-  out+='  → データあり: '+(lsHasData?'✅ YES':'❌ なし')+'\n\n';
+  out+='\n';
 
-  // ② Supabaseの状態
-  out+='【Supabase (クラウド)】\n';
-  const cloudLm=await loadFromCloud('last_modified')||'';
-  out+='  last_modified: '+(cloudLm||'(なし)')+'\n';
+  // ② Supabaseの全行を取得（重複行含む）
+  out+='【Supabase 全テーブル内容】\n';
   let cloudHasData=false;
-  for(const [y,m] of lsMonths){
-    const d=await loadFromCloud('shift_'+y+'_'+m);
-    if(d&&d.sd){
-      const names=Object.keys(d.sd);
-      let cells=0;
-      names.forEach(n=>{cells+=Object.values(d.sd[n]||{}).filter(v=>v&&v!=='').length;});
-      out+='  '+y+'/'+m+': '+names.length+'名, 入力済'+cells+'マス\n';
-      if(cells>0)cloudHasData=true;
-    }else{out+='  '+y+'/'+m+': (なし)\n';}
-  }
-  out+='  → データあり: '+(cloudHasData?'✅ YES':'❌ なし')+'\n\n';
+  let cloudBestData={};
+  try{
+    const allRows=await sbFetch('shift_app_data?order=id.asc');
+    if(!allRows||allRows.length===0){
+      out+='  テーブルが空です\n';
+    }else{
+      out+='  総行数: '+allRows.length+'\n\n';
+      // キーごとにグループ化
+      const byKey={};
+      allRows.forEach(r=>{if(!byKey[r.key])byKey[r.key]=[];byKey[r.key].push(r);});
+      Object.keys(byKey).sort().forEach(k=>{
+        const rows=byKey[k];
+        if(k.startsWith('shift_')){
+          let bestCells=0,bestIdx=0;
+          rows.forEach((r,i)=>{
+            const sd=(r.value&&r.value.sd)||{};
+            let cells=0;
+            Object.values(sd).forEach(nm=>{cells+=Object.values(nm||{}).filter(v=>v&&v!=='').length;});
+            if(cells>bestCells){bestCells=cells;bestIdx=i;}
+          });
+          out+='  '+k+': '+rows.length+'行, 最多'+bestCells+'マス(行'+bestIdx+')\n';
+          if(bestCells>0){cloudHasData=true;cloudBestData[k]={value:rows[bestIdx].value,idx:bestIdx};}
+        }else{
+          out+='  '+k+': '+rows.length+'行\n';
+        }
+      });
+    }
+  }catch(e){out+='  Supabase接続エラー: '+e.message+'\n';}
+  out+='\n';
 
-  // ③ 復元提案
-  out+='【復元オプション】\n';
+  // ③ 結論と復元ボタン
+  out+='【結論】\n';
+  el.textContent=out;
+
   if(lsHasData){
-    out+='✅ localStorageにデータあり → 下の「ローカルから復元」ボタンを押してください\n';
+    out+='✅ localStorageにデータあり\n';
     el.textContent=out;
-    // 復元ボタン追加
-    const btn=document.createElement('button');
-    btn.className='btn btn-a bsm';
-    btn.style.cssText='background:#22c55e;width:100%;margin-top:8px;';
-    btn.textContent='✅ localStorageから復元してクラウドへ保存';
-    btn.onclick=async()=>{
-      loadFromLocalBackup();
+    addRecoverBtn(el,'✅ localStorageから復元',async()=>{
+      loadFromLocalBackup();ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
+      renderNames();drawChief(CY,CM,'ctw',false);
+      if(document.getElementById('ta').classList.contains('active')&&isAdmin){drawKI();drawBikoInput();drawAdjTable();}
+      await saveAllToCloud();showToast('✅ 復元・クラウド同期完了');
+    },'#22c55e');
+  }
+  if(cloudHasData){
+    out+='✅ Supabaseの重複行に最新データあり\n';
+    el.textContent=out;
+    addRecoverBtn(el,'✅ Supabase最新行から復元',async()=>{
+      // 最多データ行をロード
+      for(const k of Object.keys(cloudBestData)){
+        const [,y,m]=k.split('_');
+        const d=cloudBestData[k].value;
+        if(!SD[y])SD[+y]={};
+        if(d&&d.sd)SD[+y][+m]=d.sd;
+        if(!KD[+y])KD[+y]={};if(d&&d.kd)KD[+y][+m]=d.kd;
+        if(!BIKO[+y])BIKO[+y]={};if(d&&d.biko)BIKO[+y][+m]=d.biko;
+      }
       ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
       renderNames();drawChief(CY,CM,'ctw',false);
       if(document.getElementById('ta').classList.contains('active')&&isAdmin){drawKI();drawBikoInput();drawAdjTable();}
-      await saveAllToCloud();
-      showToast('✅ 復元・クラウド同期完了');
-      btn.remove();
-      el.textContent=out+'→ 復元完了！';
-    };
-    el.appendChild(btn);
-  } else if(cloudHasData){
-    out+='✅ Supabaseにデータあり → 下の「クラウドから復元」ボタンを押してください\n';
-    el.textContent=out;
-    const btn=document.createElement('button');
-    btn.className='btn btn-a bsm';
-    btn.style.cssText='background:#3b82f6;width:100%;margin-top:8px;';
-    btn.textContent='✅ Supabaseから再読み込みして復元';
-    btn.onclick=async()=>{
-      await loadAllFromCloud();
-      ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
-      renderNames();drawChief(CY,CM,'ctw',false);
-      if(document.getElementById('ta').classList.contains('active')&&isAdmin){drawKI();drawBikoInput();drawAdjTable();}
-      showToast('✅ Supabaseから復元しました');
-      btn.remove();
-      el.textContent=out+'→ 復元完了！';
-    };
-    el.appendChild(btn);
-  } else {
-    out+='❌ どちらにもデータが見つかりません。\n';
-    out+='→ 他の端末（まだリロードしていないスマホ・PC）でこの診断を実行してください。\n';
+      await saveAllToCloud();showToast('✅ 最新データで復元・同期完了');
+    },'#3b82f6');
+  }
+  if(!lsHasData&&!cloudHasData){
+    out+='❌ データが見つかりません\n→ まだリロードしていない他の端末でこの診断を実行してください\n';
     el.textContent=out;
   }
+}
+function addRecoverBtn(el,label,fn,color){
+  const btn=document.createElement('button');
+  btn.className='btn btn-a bsm';
+  btn.style.cssText='background:'+color+';width:100%;margin-top:8px;padding:12px;';
+  btn.textContent=label;
+  btn.onclick=async()=>{btn.disabled=true;btn.textContent='処理中...';await fn();btn.textContent='✅ 完了';};
+  el.appendChild(btn);
 }
 
 // ─── ログ ───
