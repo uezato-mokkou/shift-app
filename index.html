@@ -1299,22 +1299,33 @@ renderNames();initM(CY,CM);
 {const _pt=document.getElementById('print-title');if(_pt)_pt.textContent='シフト表（'+CM+'月）';}
 // クラウドからデータ読み込み後に描画
 (async()=>{
-  // クラウドから読み込み（成功したら常にクラウドを優先）
   const loaded=await loadAllFromCloud();
   const cloudLm=await loadFromCloud('last_modified')||'';
-  if(loaded){
-    // クラウード読み込み成功 → クラウドデータを使用（localStorageで絶対に上書きしない）
+  const localLm=localStorage.getItem('shiftbk_modified')||'';
+  if(loaded&&cloudLm){
+    // クラウドにデータあり（last_modifiedが存在）
     ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
-    showToast('☁️ クラウドからデータを読み込みました');
-    const ts=cloudLm||new Date().toISOString();
-    saveToLocalBackup(ts); // クラウドデータをlocalStorageにもバックアップ
-    lastModifiedTime=ts;
-  } else {
-    // クラウド読み込み失敗時のみlocalStorageから復元
-    const localLm=localStorage.getItem('shiftbk_modified')||'';
-    if(localLm){
+    if(localLm>cloudLm){
+      // localStorageの方が新しい → 復元してクラウドへ反映
       loadFromLocalBackup();
       ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
+      showToast('💾 ローカルの最新データをクラウドへ同期中…');
+      await saveAllToCloud();
+    } else {
+      showToast('☁️ クラウドからデータを読み込みました');
+      saveToLocalBackup(cloudLm);
+    }
+    lastModifiedTime=cloudLm;
+  } else if(localLm){
+    // クラウドにlast_modifiedなし、またはクラウド接続不可 → localStorageから復元
+    loadFromLocalBackup();
+    ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
+    if(loaded){
+      // クラウドは接続できるがデータなし → localStorageをクラウドへ自動アップロード
+      showToast('💾 ローカルデータをクラウドへ同期中…');
+      await saveAllToCloud();
+      showToast('✅ クラウドへの同期が完了しました');
+    } else {
       showToast('📴 オフライン：ローカルデータを使用しています');
     }
     lastModifiedTime=localLm;
