@@ -186,7 +186,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
   :root{--nw:76px;--kw:34px;--dw:31px;}
   header,.tab-nav,.abar,.lgd,.msel,.deadline-notice,.locked-banner,#ti,#tp,#ta,.stitle{display:none!important;}
   #tc{display:block!important;text-align:center;}
-  html,body{background:white;margin:0;padding:0;min-height:0!important;height:auto!important;overflow:hidden!important;}
+  html,body{background:white;margin:0;padding:0;min-height:0!important;height:auto!important;overflow:visible!important;}
   .content{padding:0;}
   /* 印刷ヘッダー：テーブル左端に揃えて表示 */
   #print-hdr{display:flex!important;align-items:baseline;gap:14px;margin-bottom:5px;margin-top:0;}
@@ -1381,7 +1381,12 @@ function showToast(msg){
 // ─── 印刷時：border-collapse:separateで枠線を確実に表示 ───
 window.addEventListener('beforeprint',function(){
   // スマホ（viewport幅＜700px）は85%縮小で1ページに収める
-  if(window.innerWidth<700){document.documentElement.style.zoom='0.85';}
+  // iOS Safariはzoomが効かない場合があるため#print-wrapにtransformも併用
+  if(window.innerWidth<700){
+    document.documentElement.style.zoom='0.85';
+    const pw=document.getElementById('print-wrap');
+    if(pw){pw.style.setProperty('transform','scale(0.85)','important');pw.style.setProperty('transform-origin','top left','important');}
+  }
   // テーブルをseparateに切り替え（各セルの枠線を独立させる）
   const tbl=document.querySelector('#tc .stbl');
   if(tbl){tbl.style.setProperty('border-collapse','separate','important');tbl.style.setProperty('border-spacing','0','important');}
@@ -1405,6 +1410,8 @@ window.addEventListener('beforeprint',function(){
 window.addEventListener('afterprint',function(){
   // スマホzoomリセット
   document.documentElement.style.zoom='';
+  const pw=document.getElementById('print-wrap');
+  if(pw){pw.style.removeProperty('transform');pw.style.removeProperty('transform-origin');}
   // 印刷後はborderをリセット（画面表示に戻す）
   const tbl=document.querySelector('#tc .stbl');
   if(tbl){tbl.style.removeProperty('border-collapse');tbl.style.removeProperty('border-spacing');}
