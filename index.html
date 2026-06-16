@@ -1159,7 +1159,7 @@ function drawKI(){
       const s=isSat(CY,CM,d),sh=isHol(CY,CM,d);
       h+=`<td class="${rc}" style="min-width:var(--dw);width:var(--dw);height:38px;border:1px solid var(--bd);padding:0;${s?'background:var(--sat);':sh?'background:var(--sun);':''}">
         <input type="number" min="0" max="999" value="${ka[k][d]!==''?ka[k][d]:''}"
-          onchange="KD[${CY}][${CM}]['${k}'][${d}]=this.value===''?'':parseInt(this.value);drawKI();"
+          onchange="KD[${CY}][${CM}]['${k}'][${d}]=this.value===''?'':parseInt(this.value);drawKI();scheduleCloudSave();"
           style="width:100%;height:100%;border:none;background:transparent;text-align:center;font-weight:900;color:var(--P);font-size:.9rem;outline:none;padding:0;font-family:inherit;"></td>`;
     }
     h+='</tr>';
@@ -1506,6 +1506,14 @@ async function pollForUpdates(){
       }
       lastModifiedTime=lm;
     }else if(lm&&lastModifiedTime===''){
+      // 起動時にSupabase未接続だった端末：初回ポーリングでデータをロードする
+      const loaded=await loadAllFromCloud();
+      if(loaded){
+        ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
+        renderNames();drawChief(CY,CM,'ctw',false);
+        if(document.getElementById('ta').classList.contains('active')&&isAdmin){drawKI();drawBikoInput();drawAdjTable();}
+        showToast('🔄 クラウドからデータを読み込みました');
+      }
       lastModifiedTime=lm;
     }
   }catch(e){console.warn('同期エラー:',e);}
