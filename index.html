@@ -479,16 +479,14 @@ async function sbFetch(path,method='GET',body=null){
   return data;
 }
 
-// クラウド保存（GET→存在確認→PATCH or POST。updated_at不要）
+// クラウド保存（GET→存在確認→PATCH or POST。エラーは呼び出し元へ伝播）
 async function saveToCloud(key,value){
-  try{
-    const existing=await sbFetch('shift_app_data?key=eq.'+encodeURIComponent(key)+'&limit=1');
-    if(existing&&existing.length>0){
-      await sbFetch('shift_app_data?key=eq.'+encodeURIComponent(key),'PATCH',{value});
-    }else{
-      await sbFetch('shift_app_data','POST',{key,value});
-    }
-  }catch(e){console.warn('クラウド保存エラー['+key+']:',e);}
+  const existing=await sbFetch('shift_app_data?key=eq.'+encodeURIComponent(key)+'&limit=1');
+  if(existing&&existing.length>0){
+    await sbFetch('shift_app_data?key=eq.'+encodeURIComponent(key),'PATCH',{value});
+  }else{
+    await sbFetch('shift_app_data','POST',{key,value});
+  }
 }
 async function loadFromCloud(key){
   try{

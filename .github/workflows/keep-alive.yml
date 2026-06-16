@@ -2,8 +2,8 @@ name: Supabase Keep Alive
 
 on:
   schedule:
-    # 3日ごとに実行（UTC 0:00 = JST 9:00）
-    - cron: '0 0 */3 * *'
+    # 毎日実行（UTC 0:00 = JST 9:00）
+    - cron: '0 0 * * *'
   workflow_dispatch: # 手動実行も可能
 
 jobs:
