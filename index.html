@@ -249,6 +249,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
   <div class="stitle">
     <div><div class="sh">シフト表（<span id="clbl">4月</span>）</div><div style="font-size:.72rem;color:var(--mid);margin-top:3px;">ホテルグランビュー石垣 The First</div></div>
     <div style="display:flex;gap:7px;">
+      <button class="btn btn-s bsm" onclick="manualRefresh()">🔄 最新に更新</button>
       <button class="btn btn-s bsm" onclick="openModal(CY,CM)">⛶ 全画面</button>
     </div>
   </div>
@@ -1481,14 +1482,19 @@ renderNames();initM(CY,CM);
   drawPast();
 })();
 
-// ─── リアルタイム同期ポーリング（30秒ごと） ───
-async function pollForUpdates(){
+// ─── データ同期（ページ起動時＋手動更新ボタンのみ。自動ポーリングは廃止） ───
+// manual=true のとき（更新ボタン）は、変更が無くてもユーザーへフィードバックを表示する
+async function pollForUpdates(manual){
   try{
-    if(hasPendingChanges)return; // 未保存変更がある間はスキップ
+    if(hasPendingChanges){
+      if(manual)showToast('💾 未保存の変更があります。先に保存してください');
+      return; // 未保存変更がある間はスキップ
+    }
     const lm=await loadFromCloud('last_modified');
     if(lm&&lm!==lastModifiedTime&&lastModifiedTime!==''){
       // 編集中（シフト入力画面が開いている）は上書きしない
       if(selName&&document.getElementById('siv')&&document.getElementById('siv').style.display!=='none'){
+        if(manual)showToast('✏️ 入力画面を閉じてから更新してください');
         return; // 編集中はスキップ
       }
       // 他の端末でデータが更新された
@@ -1500,11 +1506,11 @@ async function pollForUpdates(){
         if(document.getElementById('tc').classList.contains('active'))drawChief(CY,CM,'ctw',false);
         if(document.getElementById('ti').classList.contains('active')&&selName)drawInput(CY,CM,'itw',selName);
         if(document.getElementById('ta').classList.contains('active')&&isAdmin){drawKI();drawBikoInput();drawAdjTable();}
-        showToast('🔄 データが更新されました');
+        showToast('🔄 最新データに更新しました');
       }
       lastModifiedTime=lm;
     }else if(lm&&lastModifiedTime===''){
-      // 起動時にSupabase未接続だった端末：初回ポーリングでデータをロードする
+      // 起動時にSupabase未接続だった端末：データをロードする
       const loaded=await loadAllFromCloud();
       if(loaded){
         ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
@@ -1513,10 +1519,18 @@ async function pollForUpdates(){
         showToast('🔄 クラウドからデータを読み込みました');
       }
       lastModifiedTime=lm;
+    }else if(manual){
+      // 変更なし（手動更新時のみ通知）
+      showToast('✅ 最新の状態です');
     }
-  }catch(e){console.warn('同期エラー:',e);}
+  }catch(e){
+    console.warn('同期エラー:',e);
+    if(manual)showToast('⚠️ 更新に失敗しました。通信状態をご確認ください');
+  }
 }
-setInterval(pollForUpdates,30000);
+// 手動更新ボタン用
+function manualRefresh(){showToast('🔄 最新データを確認中…');pollForUpdates(true);}
+// 自動ポーリング(30秒ごと)は廃止 — Supabase使用量削減のため、起動時と更新ボタン押下時のみ同期する
 </script>
 </body>
 </html>
