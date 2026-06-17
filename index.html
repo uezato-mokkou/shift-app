@@ -256,7 +256,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
   <div class="lgd">
     <div class="ld"><div class="ldot" style="background:var(--sat)"></div>土曜</div>
     <div class="ld"><div class="ldot" style="background:var(--sun)"></div>日・祝</div>
-    <div class="ld"><div style="width:17px;height:17px;border:3px solid #e05050;border-radius:50%;display:inline-block;"></div>繁忙日(OUT≥30)</div>
+    <div class="ld"><div style="width:17px;height:17px;border:3px solid #e05050;border-radius:50%;display:inline-block;"></div>繁忙日(OUT≥40)</div>
   </div>
   <div id="print-wrap">
     <!-- 印刷専用ヘッダー（テーブル左端に揃える） -->
@@ -460,9 +460,18 @@ function p2(n){return String(n).padStart(2,'0');}
 let STAFF=['仲松','大山','大泊','野底','西村','植田','具志堅','運道'];
 let BATH=['狩俣'];
 function ALL(){return[...STAFF,...BATH];}
-let CY=2026,CM=4,selName='',isAdmin=localStorage.getItem('shift_admin_logged')==='true',deadlineClosed=false;
+let _initD=new Date(),CY=_initD.getFullYear(),CM=_initD.getMonth()+1,selName='',isAdmin=localStorage.getItem('shift_admin_logged')==='true',deadlineClosed=false;
 let ocrParsed=null,ocrB64='',ocrMime='';
 const SD={},KD={},BIKO={},CUSTOM={},LOG=[];
+// スタッフごとの「登録開始月」(YYYY-MM)。未設定＝以前から在籍（全月に表示）
+let STAFF_FROM={};
+function ymNum(y,m){return y*100+m;}
+function staffActiveAt(nm,y,m){const f=STAFF_FROM[nm];if(!f)return true;const p=f.split('-');return ymNum(y,m)>=ymNum(+p[0],+p[1]);}
+function STAFF_AT(y,m){return STAFF.filter(nm=>staffActiveAt(nm,y,m));}
+function BATH_AT(y,m){return BATH.filter(nm=>staffActiveAt(nm,y,m));}
+function ALL_AT(y,m){return[...STAFF_AT(y,m),...BATH_AT(y,m)];}
+// 追加時の月選択肢（2026年4月〜2027年3月）
+function monthOptsHTML(){let o='';const list=[];for(let mm=4;mm<=12;mm++)list.push([2026,mm]);for(let mm=1;mm<=3;mm++)list.push([2027,mm]);list.forEach(([y,m])=>{const v=y+'-'+p2(m);const sel=(y===CY&&m===CM)?' selected':'';o+=`<option value="${v}"${sel}>${y}年${m}月から</option>`;});return o;}
 
 // ─── Supabase ───
 const SUPABASE_URL='https://sfjxnwmxzfotaffizmdx.supabase.co';
@@ -511,7 +520,7 @@ async function saveAllToCloud(){
   saveToLocalBackup(now);
   try{
     await Promise.all([
-      saveToCloud('staff',{STAFF,BATH,CUSTOM}),
+      saveToCloud('staff',{STAFF,BATH,CUSTOM,STAFF_FROM}),
       saveToCloud('last_modified',now),
       ...Object.keys(SD).flatMap(y=>Object.keys(SD[y]).map(m=>saveToCloud('shift_'+y+'_'+m,{sd:SD[y][m],kd:KD[y]?.[m],biko:BIKO[y]?.[m]}))),
     ]);
@@ -528,7 +537,7 @@ async function saveAllToCloud(){
 function saveToLocalBackup(ts){
   try{
     localStorage.setItem('shiftbk_modified',ts||new Date().toISOString());
-    localStorage.setItem('shiftbk_staff',JSON.stringify({STAFF,BATH,CUSTOM}));
+    localStorage.setItem('shiftbk_staff',JSON.stringify({STAFF,BATH,CUSTOM,STAFF_FROM}));
     Object.keys(SD).forEach(y=>Object.keys(SD[y]).forEach(m=>{
       localStorage.setItem('shiftbk_'+y+'_'+m,JSON.stringify({sd:SD[y][m],kd:KD[y]?.[m],biko:BIKO[y]?.[m]}));
     }));
@@ -537,8 +546,8 @@ function saveToLocalBackup(ts){
 function loadFromLocalBackup(){
   try{
     const staffRaw=localStorage.getItem('shiftbk_staff');
-    if(staffRaw){const s=JSON.parse(staffRaw);if(s.STAFF)STAFF.splice(0,STAFF.length,...s.STAFF);if(s.BATH)BATH.splice(0,BATH.length,...s.BATH);if(s.CUSTOM)Object.assign(CUSTOM,s.CUSTOM);}
-    [[CY,CM],[2026,5],[2026,6],[2026,7],[2026,8],[2026,9]].forEach(([y,m])=>{
+    if(staffRaw){const s=JSON.parse(staffRaw);if(s.STAFF)STAFF.splice(0,STAFF.length,...s.STAFF);if(s.BATH)BATH.splice(0,BATH.length,...s.BATH);if(s.CUSTOM)Object.assign(CUSTOM,s.CUSTOM);if(s.STAFF_FROM)STAFF_FROM=s.STAFF_FROM;}
+    [[2026,4],[2026,5],[2026,6],[2026,7],[2026,8],[2026,9]].forEach(([y,m])=>{
       const raw=localStorage.getItem('shiftbk_'+y+'_'+m);
       if(!raw)return;const d=JSON.parse(raw);
       if(!SD[y])SD[y]={};if(d.sd)SD[y][m]=d.sd;
@@ -557,9 +566,10 @@ async function loadAllFromCloud(){
       if(staffData.STAFF)STAFF.splice(0,STAFF.length,...staffData.STAFF);
       if(staffData.BATH)BATH.splice(0,BATH.length,...staffData.BATH);
       if(staffData.CUSTOM)Object.assign(CUSTOM,staffData.CUSTOM);
+      if(staffData.STAFF_FROM)STAFF_FROM=staffData.STAFF_FROM;
     }
     // 現在月と前後月を読み込む
-    const months=[[CY,CM],[2026,5],[2026,6],[2026,7],[2026,8],[2026,9]];
+    const months=[[2026,4],[2026,5],[2026,6],[2026,7],[2026,8],[2026,9]];
     for(const [y,m] of months){
       const d=await loadFromCloud('shift_'+y+'_'+m);
       if(d){
@@ -642,6 +652,7 @@ function changeCurMonth(){
   document.getElementById('clbl').textContent=CM+'月';
   if(document.getElementById('acm'))document.getElementById('acm').textContent=CY+'年'+CM+'月';
   const _pt=document.getElementById('print-title');if(_pt)_pt.textContent='シフト表（'+CM+'月）';
+  renderNames();
   if(document.getElementById('tc').classList.contains('active'))drawChief(CY,CM,'ctw',false);
   if(document.getElementById('ti').classList.contains('active')&&selName)drawInput(CY,CM,'itw',selName);
   if(document.getElementById('ta').classList.contains('active')&&isAdmin){drawKI();drawBikoInput();drawAdjTable();}
@@ -658,14 +669,14 @@ function renderNames(){
     banner.style.cssText='grid-column:1/-1;margin-bottom:6px;';
     banner.textContent='🔒 休み希望は締め切りました。';
     g.appendChild(banner);
-    ALL().forEach(n=>{
+    ALL_AT(CY,CM).forEach(n=>{
       const b=document.createElement('button');b.className='nbtn';b.textContent=n;
       b.disabled=true;b.style.cssText='opacity:0.45;cursor:not-allowed;pointer-events:none;';
       g.appendChild(b);
     });
   } else {
     // 名前タップで直接シフト入力画面へ
-    ALL().forEach(n=>{
+    ALL_AT(CY,CM).forEach(n=>{
       const b=document.createElement('button');b.className='nbtn';b.textContent=n;
       b.onclick=()=>{selName=n;startInput();};
       g.appendChild(b);
@@ -746,7 +757,7 @@ function buildShutsu(y,m,n){
   let h='<tr class="rout"><td class="fn">出人員</td><td class="fk lbl"></td>';
   for(let d=1;d<=n;d++){
     const s=isSat(y,m,d),sh=isHol(y,m,d);
-    let c=0;STAFF.forEach(nm=>{const v=SD[y]&&SD[y][m]&&SD[y][m][nm]?SD[y][m][nm][d]||'':'';if(v!=='kyuu'&&v!=='adj'&&v!=='yuu')c++;});
+    let c=0;STAFF_AT(y,m).forEach(nm=>{const v=SD[y]&&SD[y][m]&&SD[y][m][nm]?SD[y][m][nm][d]||'':'';if(v!=='kyuu'&&v!=='adj'&&v!=='yuu')c++;});
     h+=`<td class="dc ${s?'sat':sh?'sun':''}" style="cursor:default;">${c}</td>`;
   }
   return h+'</tr>';
@@ -759,8 +770,8 @@ function buildKadou(y,m,n,ka){
     for(let d=1;d<=n;d++){
       const s=isSat(y,m,d),sh=isHol(y,m,d);
       const val=ka[k][d];
-      // OUT行：30以上は赤文字・太字
-      const red=k==='OUT'&&parseInt(val||0)>=30;
+      // OUT行：40以上は赤文字・太字
+      const red=k==='OUT'&&parseInt(val||0)>=40;
       h+=`<td class="dck ${s?'sat':sh?'sun':''} ${rc}"${red?' style="color:#e03030;font-weight:900;"':''}>${val!==''?val:''}</td>`;
     }
     h+='</tr>';
@@ -779,7 +790,7 @@ function buildBiko(y,m,n){
 }
 function buildBathRows(y,m,n){
   let h='';
-  BATH.forEach(bsnm=>{
+  BATH_AT(y,m).forEach(bsnm=>{
     const bc=cntBath(y,m,bsnm);
     h+=`<tr class="rkar"><td class="fn">${bsnm}</td><td class="fk"><span class="kc ${bc===null||bc>7?'ok':'red'}">${bc===null?'':bc}</span></td>`;
     for(let d=1;d<=n;d++){
@@ -797,7 +808,7 @@ function buildBathRows(y,m,n){
 function drawInput(y,m,wid,fname){
   const w=document.getElementById(wid);if(!w)return;
   const n=dim(y,m);const ka=KD[y]&&KD[y][m]?KD[y][m]:{OUT:{},Stay:{},IN:{}};
-  const busy=new Set();for(let d=1;d<=n;d++)if(parseInt(ka.OUT[d]||0)>=30)busy.add(d);
+  const busy=new Set();for(let d=1;d<=n;d++)if(parseInt(ka.OUT[d]||0)>=40)busy.add(d);
   const isBath=BATH.includes(fname);
   const cnt=isBath?cntBath(y,m,fname):cntKyuu(y,m,fname);
   const locked=isLocked()&&!isAdmin;
@@ -854,9 +865,9 @@ function drawChief(y,m,wid,adjMode){
   const w=document.getElementById(wid);if(!w)return;
   initM(y,m);
   const n=dim(y,m);const ka=KD[y]&&KD[y][m]?KD[y][m]:{OUT:{},Stay:{},IN:{}};
-  const busy=new Set();for(let d=1;d<=n;d++)if(parseInt(ka.OUT[d]||0)>=30)busy.add(d);
+  const busy=new Set();for(let d=1;d<=n;d++)if(parseInt(ka.OUT[d]||0)>=40)busy.add(d);
   let h=buildHdr(y,m,n,busy);
-  STAFF.forEach(nm=>{
+  STAFF_AT(y,m).forEach(nm=>{
     const cnt=cntKyuu(y,m,nm);
     h+=`<tr><td class="fn">${nm}</td><td class="fk"><span class="kc ${cnt>0&&cnt<=7?'red':'ok'}">${cnt||''}</span></td>`;
     for(let d=1;d<=n;d++){
@@ -877,9 +888,9 @@ function drawAdjTable(){
   const wid='adj-wrap';const w=document.getElementById(wid);if(!w)return;
   const y=CY,m=CM;initM(y,m);
   const n=dim(y,m);const ka=KD[y]&&KD[y][m]?KD[y][m]:{OUT:{},Stay:{},IN:{}};
-  const busy=new Set();for(let d=1;d<=n;d++)if(parseInt(ka.OUT[d]||0)>=30)busy.add(d);
+  const busy=new Set();for(let d=1;d<=n;d++)if(parseInt(ka.OUT[d]||0)>=40)busy.add(d);
   let h=buildHdr(y,m,n,busy);
-  STAFF.forEach(nm=>{
+  STAFF_AT(y,m).forEach(nm=>{
     const cnt=cntKyuu(y,m,nm);
     h+=`<tr><td class="fn">${nm}</td><td class="fk"><span class="kc ${cnt<=7?'red':'ok'}">${cnt||''}</span></td>`;
     for(let d=1;d<=n;d++){
@@ -1099,22 +1110,26 @@ function renderSM(){
   STAFF.forEach((nm,i)=>{
     h+=`<div style="display:flex;align-items:center;gap:4px;background:#f4f6f8;border-radius:8px;padding:6px 10px;border:1px solid var(--bd);">
       <input value="${nm}" style="border:none;background:transparent;font-weight:700;font-size:.9rem;width:${Math.max(3,nm.length+1)}em;font-family:inherit;" onchange="renameS('n',${i},this.value)">
+      ${STAFF_FROM[nm]?`<span style="font-size:.64rem;color:var(--mid);white-space:nowrap;">${STAFF_FROM[nm].replace('-','/')}〜</span>`:''}
       <button onclick="removeS('n',${i})" style="background:#e05050;color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:.7rem;cursor:pointer;flex-shrink:0;">✕</button>
     </div>`;
   });
-  h+='</div><div style="display:flex;gap:6px;">';
-  h+='<input id="snn" placeholder="名前を入力" style="flex:1;padding:7px 10px;border:1.5px solid var(--bd);border-radius:6px;font-family:inherit;font-size:.85rem;">';
+  h+='</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">';
+  h+='<input id="snn" placeholder="名前を入力" style="flex:1;min-width:110px;padding:7px 10px;border:1.5px solid var(--bd);border-radius:6px;font-family:inherit;font-size:.85rem;">';
+  h+='<select id="snn-m" style="padding:7px;border:1.5px solid var(--bd);border-radius:6px;font-family:inherit;font-size:.82rem;">'+monthOptsHTML()+'</select>';
   h+='<button class="btn btn-p bsm" onclick="addS(\'n\')">＋追加</button></div></div>';
   h+='<div><div style="font-size:.82rem;font-weight:700;color:var(--adj);margin-bottom:8px;">🛁 大浴場清掃担当</div>';
   h+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">';
   BATH.forEach((nm,i)=>{
     h+=`<div style="display:flex;align-items:center;gap:4px;background:#f3f0fb;border-radius:8px;padding:6px 10px;border:1px solid #c4b5fd;">
       <input value="${nm}" style="border:none;background:transparent;font-weight:700;font-size:.9rem;width:${Math.max(3,nm.length+1)}em;font-family:inherit;" onchange="renameS('b',${i},this.value)">
+      ${STAFF_FROM[nm]?`<span style="font-size:.64rem;color:var(--mid);white-space:nowrap;">${STAFF_FROM[nm].replace('-','/')}〜</span>`:''}
       <button onclick="removeS('b',${i})" style="background:#e05050;color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:.7rem;cursor:pointer;flex-shrink:0;">✕</button>
     </div>`;
   });
-  h+='</div><div style="display:flex;gap:6px;">';
-  h+='<input id="snb" placeholder="名前を入力" style="flex:1;padding:7px 10px;border:1.5px solid var(--bd);border-radius:6px;font-family:inherit;font-size:.85rem;">';
+  h+='</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">';
+  h+='<input id="snb" placeholder="名前を入力" style="flex:1;min-width:110px;padding:7px 10px;border:1.5px solid var(--bd);border-radius:6px;font-family:inherit;font-size:.85rem;">';
+  h+='<select id="snb-m" style="padding:7px;border:1.5px solid var(--bd);border-radius:6px;font-family:inherit;font-size:.82rem;">'+monthOptsHTML()+'</select>';
   h+='<button class="btn btn-a bsm" onclick="addS(\'b\')">＋追加</button></div></div>';
   el.innerHTML=h;
 }
@@ -1122,22 +1137,30 @@ function addS(type){
   const id=type==='n'?'snn':'snb';const nm=document.getElementById(id).value.trim();
   if(!nm){showToast('⚠️ 名前を入力してください');return;}
   if(ALL().includes(nm)){showToast('⚠️ すでに登録されています');return;}
+  const mid=type==='n'?'snn-m':'snb-m';
+  const mEl=document.getElementById(mid);
+  const fromVal=(mEl&&mEl.value)||(CY+'-'+p2(CM));
+  const fp=fromVal.split('-').map(Number);
   if(type==='n')STAFF.push(nm);else BATH.push(nm);
+  STAFF_FROM[nm]=fromVal; // 登録開始月を記録（この月以降のみ表示）
   if(!CUSTOM[nm])CUSTOM[nm]=[];
-  Object.keys(SD).forEach(y=>Object.keys(SD[y]).forEach(m=>{if(!SD[y][m][nm]){SD[y][m][nm]={};const nd=dim(+y,+m);for(let d=1;d<=nd;d++)SD[y][m][nm][d]='';}}));
+  // 指定月以降のみSDを初期化（過去月のシフトは変更しない）
+  Object.keys(SD).forEach(y=>Object.keys(SD[y]).forEach(m=>{if(ymNum(+y,+m)>=ymNum(fp[0],fp[1])&&!SD[y][m][nm]){SD[y][m][nm]={};const nd=dim(+y,+m);for(let d=1;d<=nd;d++)SD[y][m][nm][d]='';}}));
   document.getElementById(id).value='';renderSM();renderNames();renderCN();
-  addLog('管理者','追加',nm+'（'+(type==='n'?'通常':'大浴場')+'）');showToast('✅ '+nm+' さんを追加しました');scheduleCloudSave();
+  const fLbl=fp[0]+'年'+fp[1]+'月';
+  addLog('管理者','追加',nm+'（'+(type==='n'?'通常':'大浴場')+'・'+fLbl+'から）');showToast('✅ '+nm+' さんを'+fLbl+'から追加しました');scheduleCloudSave();
 }
 function removeS(type,idx){
   const arr=type==='n'?STAFF:BATH;const nm=arr[idx];
   if(!confirm(nm+' さんを削除しますか？'))return;
-  arr.splice(idx,1);addLog('管理者','削除',nm);renderSM();renderNames();renderCN();showToast('🗑 '+nm+' さんを削除しました');scheduleCloudSave();
+  arr.splice(idx,1);delete STAFF_FROM[nm];addLog('管理者','削除',nm);renderSM();renderNames();renderCN();showToast('🗑 '+nm+' さんを削除しました');scheduleCloudSave();
 }
 function renameS(type,idx,nv){
   if(!nv.trim())return;const arr=type==='n'?STAFF:BATH;const old=arr[idx];
   if(ALL().filter(n=>n!==old).includes(nv)){showToast('⚠️ その名前はすでに存在します');return;}
   Object.keys(SD).forEach(y=>Object.keys(SD[y]).forEach(m=>{if(SD[y][m][old]){SD[y][m][nv]=SD[y][m][old];delete SD[y][m][old];}}));
   if(CUSTOM[old]){CUSTOM[nv]=CUSTOM[old];delete CUSTOM[old];}
+  if(STAFF_FROM[old]){STAFF_FROM[nv]=STAFF_FROM[old];delete STAFF_FROM[old];}
   arr[idx]=nv;addLog('管理者','名前変更',old+'→'+nv);renderSM();renderNames();renderCN();showToast('✅ 名前変更: '+old+'→'+nv);scheduleCloudSave();
 }
 
@@ -1426,7 +1449,14 @@ window.addEventListener('afterprint',function(){
 });
 // ─── 初期化 ───
 renderNames();initM(CY,CM);
-{const _pt=document.getElementById('print-title');if(_pt)_pt.textContent='シフト表（'+CM+'月）';}
+// 起動時に各種ラベルを当月へ更新（デフォルト表示が当月になるように）
+{
+  const _pt=document.getElementById('print-title');if(_pt)_pt.textContent='シフト表（'+CM+'月）';
+  const _hb=document.getElementById('hdr-badge');if(_hb)_hb.textContent=CY+'年'+CM+'月 ▼';
+  const _cl=document.getElementById('clbl');if(_cl)_cl.textContent=CM+'月';
+  const _ns=document.getElementById('ns-mt');if(_ns)_ns.textContent=CM+'月のシフト';
+  const _ac=document.getElementById('acm');if(_ac)_ac.textContent=CY+'年'+CM+'月';
+}
 // クラウドからデータ読み込み後に描画
 (async()=>{
   const loaded=await loadAllFromCloud();
