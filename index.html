@@ -1426,6 +1426,10 @@ function showToast(msg){
 
 // ─── 印刷時：border-collapse:separateで枠線を確実に表示 ───
 window.addEventListener('beforeprint',function(){
+  // 印刷前に「現在表示中の月」のシフト表を最新状態で再描画する。
+  // （管理者タブ等から印刷した場合に #ctw が古い月のままになるのを防ぐ）
+  drawChief(CY,CM,'ctw',false);
+  {const _pt=document.getElementById('print-title');if(_pt)_pt.textContent='シフト表（'+CM+'月）';}
   // スタッフ数に応じて自動縮小（A4横 210mm=794px、body上padding 6mm=23px → 使用可能高さ≈770px）
   const pw=document.getElementById('print-wrap');
   if(pw){
