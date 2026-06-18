@@ -1437,18 +1437,42 @@ window.addEventListener('beforeprint',function(){
   const tc=document.getElementById('tc');
   _tcForcedDisplay=false;
   if(tc&&!tc.classList.contains('active')){tc.style.display='block';_tcForcedDisplay=true;}
-  // スタッフ数に応じて自動縮小（A4横 210mm=794px、body上padding 6mm=23px → 使用可能高さ≈770px）
+  // A4横1枚いっぱいに表示する自動調整。
+  // ポイント：高さ測定は「画面用の大きいセル」ではなく「印刷時の実寸」で行う。
+  //（画面寸法で測ると過大評価して縮小しすぎ＝小さく印刷されてしまうため）
   const pw=document.getElementById('print-wrap');
   if(pw){
     pw.style.removeProperty('zoom');
     pw.style.removeProperty('transform');
     pw.style.removeProperty('transform-origin');
-    const maxH=770;
-    const h=pw.scrollHeight;
-    if(h>maxH){
-      const scale=+(maxH/h).toFixed(3);
-      pw.style.setProperty('zoom',String(scale),'important');
+    const docEl=document.documentElement;
+    const numDays=dim(CY,CM);
+    // 印刷実寸を再現する一時スタイル（@media print と同じセル高さ・ヘッダー表示）
+    const ms=document.createElement('style');ms.id='__pmStyle';
+    ms.textContent='body.__pm #print-hdr{display:flex!important;}body.__pm .dc{height:42px!important;}body.__pm .dck{height:22px!important;}body.__pm .dcb{height:95px!important;}body.__pm .thd{padding:5px 1px 3px!important;font-size:.85rem!important;}body.__pm .thw{padding:2px 1px 4px!important;font-size:.72rem!important;}body.__pm .fn{font-size:.98rem!important;}body.__pm .fk{font-size:.68rem!important;}';
+    document.head.appendChild(ms);
+    document.body.classList.add('__pm');
+    // 列幅を sc 倍に設定するヘルパー（基準: nw76/kw34/dw31）
+    const setVars=function(sc){docEl.style.setProperty('--nw',(76*sc).toFixed(2)+'px');docEl.style.setProperty('--kw',(34*sc).toFixed(2)+'px');docEl.style.setProperty('--dw',(31*sc).toFixed(2)+'px');};
+    // A4横の使用可能領域（px@96dpi：297mm幅・210mm高 − 余白）
+    const maxW=1080,maxH=766;
+    let sc=1;setVars(sc);
+    let natH=pw.scrollHeight;                 // 印刷実寸の高さ（題名＋表）
+    let natW=(76+34+31*numDays)*sc;           // 表の幅（列幅から算出）
+    let z=Math.min(maxW/natW,maxH/natH);
+    // 高さ基準で横に余白が残るなら、列幅を広げて横もいっぱいに
+    if(natW*z<maxW-6){
+      const zH=maxH/natH;
+      sc=Math.min((maxW/zH)/(76+34+31*numDays),2.2);
+      setVars(sc);
+      natH=pw.scrollHeight;
+      natW=(76+34+31*numDays)*sc;
+      z=Math.min(maxW/natW,maxH/natH);
     }
+    // 測定用スタイルを解除（実際の印刷は @media print が効く。列幅 inline は印刷に反映させるため残す）
+    document.body.classList.remove('__pm');
+    ms.remove();
+    pw.style.setProperty('zoom',String(+z.toFixed(3)),'important');
   }
   // テーブルをseparateに切り替え（各セルの枠線を独立させる）
   const tbl=document.querySelector('#tc .stbl');
@@ -1476,6 +1500,12 @@ window.addEventListener('afterprint',function(){
   if(pw){pw.style.removeProperty('zoom');pw.style.removeProperty('transform');pw.style.removeProperty('transform-origin');}
   // 印刷用に一時表示した #tc を元に戻す
   if(_tcForcedDisplay){const tc=document.getElementById('tc');if(tc)tc.style.removeProperty('display');_tcForcedDisplay=false;}
+  // 印刷用に上書きした列幅(inline)を解除して画面表示を元に戻す
+  document.documentElement.style.removeProperty('--nw');
+  document.documentElement.style.removeProperty('--kw');
+  document.documentElement.style.removeProperty('--dw');
+  {const _ms=document.getElementById('__pmStyle');if(_ms)_ms.remove();}
+  document.body.classList.remove('__pm');
   // 印刷後はborderをリセット（画面表示に戻す）
   const tbl=document.querySelector('#tc .stbl');
   if(tbl){tbl.style.removeProperty('border-collapse');tbl.style.removeProperty('border-spacing');}
