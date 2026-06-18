@@ -1454,8 +1454,10 @@ window.addEventListener('beforeprint',function(){
     document.body.classList.add('__pm');
     // 列幅を sc 倍に設定するヘルパー（基準: nw76/kw34/dw31）
     const setVars=function(sc){docEl.style.setProperty('--nw',(76*sc).toFixed(2)+'px');docEl.style.setProperty('--kw',(34*sc).toFixed(2)+'px');docEl.style.setProperty('--dw',(31*sc).toFixed(2)+'px');};
-    // A4横の使用可能領域（px@96dpi：297mm幅・210mm高 − 余白）
-    const maxW=1080,maxH=766;
+    // A4横の使用可能領域（px@96dpi：297mm幅・210mm高 − 余白）。
+    // 実際の印刷ではブラウザ/プリンタの最小余白等でわずかに縮むため、
+    // 確実に1ページへ収まるよう安全マージンを多めに取る（題名と表が別ページに分かれるのを防ぐ）。
+    const maxW=1055,maxH=735;
     let sc=1;setVars(sc);
     let natH=pw.scrollHeight;                 // 印刷実寸の高さ（題名＋表）
     let natW=(76+34+31*numDays)*sc;           // 表の幅（列幅から算出）
