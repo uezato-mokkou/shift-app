@@ -33,7 +33,8 @@ body{font-family:'Noto Sans JP',sans-serif;background:#f0f4f7;min-height:100vh;c
 header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:300;box-shadow:0 1px 6px rgba(0,0,0,0.1);border-bottom:2px solid var(--P);}
 .hname{font-family:'Shippori Mincho',serif;font-size:0.92rem;letter-spacing:0.08em;color:var(--P);white-space:nowrap;}
 .hsub{font-size:0.56rem;color:var(--mid);letter-spacing:0.14em;margin-top:2px;}
-.mbadge{background:var(--P);color:white;font-size:0.75rem;font-weight:700;padding:4px 12px;border-radius:20px;cursor:pointer;}
+.mbadge{background:var(--P);color:white;font-size:0.75rem;font-weight:700;padding:4px 26px 4px 14px;border-radius:20px;cursor:pointer;border:none;appearance:none;-webkit-appearance:none;-moz-appearance:none;text-align:center;text-align-last:center;font-family:inherit;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M1 3l4 4 4-4' stroke='white' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-position:right 10px center;}
+.mbadge option{color:#1c2833;background:#fff;}
 .tab-nav{display:flex;background:white;border-bottom:2px solid var(--bd);overflow-x:auto;scrollbar-width:none;position:sticky;top:48px;z-index:290;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
 .tab-nav::-webkit-scrollbar{display:none;}
 .tb{padding:8px 12px;font-size:0.79rem;font-weight:700;color:var(--mid);border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;flex-shrink:0;transition:all 0.2s;margin-bottom:-2px;}
@@ -234,7 +235,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
 <body>
 <header>
   <div><div class="hname">ホテルグランビュー石垣 The First</div><div class="hsub">SHIFT MANAGEMENT SYSTEM</div></div>
-  <div class="mbadge" id="hdr-badge" onclick="changeCurMonth()">2026年4月 ▼</div>
+  <select class="mbadge" id="hdr-badge" onchange="setCurMonth(this.value)" title="表示する月を選択"></select>
 </header>
 <nav class="tab-nav">
   <button class="tb active" onclick="showTab('tc',this)">📋 シフト表</button>
@@ -476,7 +477,8 @@ function staffActiveAt(nm,y,m){
 function STAFF_AT(y,m){return STAFF.filter(nm=>staffActiveAt(nm,y,m));}
 function BATH_AT(y,m){return BATH.filter(nm=>staffActiveAt(nm,y,m));}
 function ALL_AT(y,m){return[...STAFF_AT(y,m),...BATH_AT(y,m)];}
-function _monthList(){const list=[];for(let mm=4;mm<=12;mm++)list.push([2026,mm]);for(let mm=1;mm<=3;mm++)list.push([2027,mm]);return list;}
+// 対応する全月リスト（2026年4月〜2027年12月）。月の追加はここを変えるだけでOK。
+function _monthList(){const list=[];for(let mm=4;mm<=12;mm++)list.push([2026,mm]);for(let mm=1;mm<=12;mm++)list.push([2027,mm]);return list;}
 // 追加時の月選択肢（◯月から）。デフォルトは当月
 function monthOptsHTML(){let o='';_monthList().forEach(([y,m])=>{const v=y+'-'+p2(m);const sel=(y===CY&&m===CM)?' selected':'';o+=`<option value="${v}"${sel}>${y}年${m}月から</option>`;});return o;}
 // 退職月の選択肢（◯月まで）。「在籍中」が既定
@@ -556,7 +558,7 @@ function loadFromLocalBackup(){
   try{
     const staffRaw=localStorage.getItem('shiftbk_staff');
     if(staffRaw){const s=JSON.parse(staffRaw);if(s.STAFF)STAFF.splice(0,STAFF.length,...s.STAFF);if(s.BATH)BATH.splice(0,BATH.length,...s.BATH);if(s.CUSTOM)Object.assign(CUSTOM,s.CUSTOM);if(s.STAFF_FROM)STAFF_FROM=s.STAFF_FROM;if(s.STAFF_TO)STAFF_TO=s.STAFF_TO;}
-    [[2026,4],[2026,5],[2026,6],[2026,7],[2026,8],[2026,9]].forEach(([y,m])=>{
+    _monthList().forEach(([y,m])=>{
       const raw=localStorage.getItem('shiftbk_'+y+'_'+m);
       if(!raw)return;const d=JSON.parse(raw);
       if(!SD[y])SD[y]={};if(d.sd)SD[y][m]=d.sd;
@@ -578,9 +580,8 @@ async function loadAllFromCloud(){
       if(staffData.STAFF_FROM)STAFF_FROM=staffData.STAFF_FROM;
       if(staffData.STAFF_TO)STAFF_TO=staffData.STAFF_TO;
     }
-    // 現在月と前後月を読み込む
-    const months=[[2026,4],[2026,5],[2026,6],[2026,7],[2026,8],[2026,9]];
-    for(const [y,m] of months){
+    // 全対応月を並列で読み込む（月数が増えても遅くならないように）
+    await Promise.all(_monthList().map(async([y,m])=>{
       const d=await loadFromCloud('shift_'+y+'_'+m);
       if(d){
         if(!SD[y])SD[y]={};
@@ -590,7 +591,7 @@ async function loadAllFromCloud(){
         if(!BIKO[y])BIKO[y]={};
         if(d.biko)BIKO[y][m]=d.biko;
       }
-    }
+    }));
     return true;
   }catch(e){console.warn('クラウド読み込みエラー:',e);return false;}
 }
@@ -605,7 +606,9 @@ function initM(y,m){
   if(!BIKO[y])BIKO[y]={};if(!BIKO[y][m])BIKO[y][m]={};
   ALL().forEach(n=>{if(!CUSTOM[n])CUSTOM[n]=[];});
 }
-initM(2026,4);initM(2026,5);
+// 事前初期化は当月のみ（空の月まで保存対象にして通信量が増えるのを防ぐ）。
+// 他の月は表示時(initM)やデータ読込時に必要な分だけ扱う。
+initM(CY,CM);
 // ※稼働数の初期値はクラウドから読み込み（ハードコードしない）
 
 // 休み数カウント
@@ -652,12 +655,17 @@ function showAMain(){
 }
 
 // ─── 月変更 ───
-function changeCurMonth(){
-  const opts=[[2026,4],[2026,5],[2026,6],[2026,7],[2026,8],[2026,9]];
-  const ci=opts.findIndex(o=>o[0]===CY&&o[1]===CM);
-  const ni=(ci+1)%opts.length;
-  CY=opts[ni][0];CM=opts[ni][1];initM(CY,CM);
-  document.getElementById('hdr-badge').textContent=CY+'年'+CM+'月 ▼';
+// ヘッダーの月ドロップダウンを全月で生成し、現在月を選択状態にする
+function fillMonthBadge(){
+  const sel=document.getElementById('hdr-badge');if(!sel)return;
+  sel.innerHTML=_monthList().map(([y,m])=>`<option value="${y}-${p2(m)}"${(y===CY&&m===CM)?' selected':''}>${y}年${m}月</option>`).join('');
+}
+// ドロップダウンで月を選択したとき
+function setCurMonth(val){if(!val)return;const p=val.split('-');CY=+p[0];CM=+p[1];applyMonthChange();}
+// 現在月(CY,CM)に合わせて画面全体を更新
+function applyMonthChange(){
+  initM(CY,CM);
+  const sel=document.getElementById('hdr-badge');if(sel)sel.value=CY+'-'+p2(CM);
   document.getElementById('ns-mt').textContent=CM+'月のシフト';
   document.getElementById('clbl').textContent=CM+'月';
   if(document.getElementById('acm'))document.getElementById('acm').textContent=CY+'年'+CM+'月';
@@ -1310,7 +1318,7 @@ async function runDiagnosis(){
   out+='【localStorage】\n';
   const localLm=localStorage.getItem('shiftbk_modified')||'';
   out+='  last_modified: '+(localLm||'(なし)')+'\n';
-  const months=[[2026,4],[2026,5],[2026,6],[2026,7],[2026,8],[2026,9]];
+  const months=_monthList();
   let lsHasData=false;
   months.forEach(([y,m])=>{
     const raw=localStorage.getItem('shiftbk_'+y+'_'+m);
@@ -1520,7 +1528,7 @@ renderNames();initM(CY,CM);
 // 起動時に各種ラベルを当月へ更新（デフォルト表示が当月になるように）
 {
   const _pt=document.getElementById('print-title');if(_pt)_pt.textContent='シフト表（'+CM+'月）';
-  const _hb=document.getElementById('hdr-badge');if(_hb)_hb.textContent=CY+'年'+CM+'月 ▼';
+  fillMonthBadge();
   const _cl=document.getElementById('clbl');if(_cl)_cl.textContent=CM+'月';
   const _ns=document.getElementById('ns-mt');if(_ns)_ns.textContent=CM+'月のシフト';
   const _ac=document.getElementById('acm');if(_ac)_ac.textContent=CY+'年'+CM+'月';
