@@ -324,7 +324,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
     <div class="acard">
       <h3>🖨 シフト表出力</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-p bsm" onclick="printShift()">🖨 A4印刷</button>
+        <button class="btn btn-p bsm" onclick="generatePDF()">🖨 A4印刷（PDF）</button>
         <button class="btn btn-s bsm" onclick="exportCSV()">📥 CSVダウンロード</button>
       </div>
     </div>
@@ -1435,19 +1435,80 @@ function showToast(msg){
   setTimeout(()=>t.style.transform='translateX(-50%) translateY(70px)',2800);
 }
 
-// ─── 印刷ボタン ───
-function printShift(){
-  // iOSでホーム画面に追加したアプリ(standalone表示)からは window.print() が動作しないため案内する
+// ─── 印刷（PDF出力）───
+// iPhoneのSafari印刷は「縦向き固定・自動縮小が効かない・URL/日付が付く」制約があるため、
+// A4横のPDFを生成して開く方式にする。PDFなら向き・サイズ・余白を完全に制御できる。
+function _loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('スクリプト読込失敗'));document.head.appendChild(s);});}
+let _pdfLibsReady=false;
+async function _ensurePdfLibs(){
+  if(_pdfLibsReady)return;
+  await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  _pdfLibsReady=true;
+}
+// キャプチャ用スタイル（@media print と同じ見た目を画面外で再現）
+const _CAP_CSS=
+'body.__cap #tc{display:block!important;position:fixed!important;left:-10000px!important;top:0!important;z-index:-1;background:#fff!important;text-align:left!important;}'+
+'body.__cap #print-wrap{display:block!important;width:max-content!important;margin:0!important;background:#fff!important;padding:0!important;}'+
+'body.__cap #print-hdr{display:flex!important;align-items:baseline;gap:14px;margin:0 0 6px 0!important;}'+
+'body.__cap #print-footer{display:none!important;}body.__cap #toast{display:none!important;}'+
+'body.__cap .swrap{box-shadow:none!important;border:none!important;overflow:visible!important;width:max-content!important;max-width:none!important;border-radius:0!important;display:block!important;}'+
+'body.__cap .fn{position:relative!important;left:auto!important;font-size:.98rem!important;}'+
+'body.__cap .fk{position:relative!important;left:auto!important;font-size:.68rem!important;}'+
+'body.__cap .thd{font-size:.85rem!important;padding:5px 1px 3px!important;}'+
+'body.__cap .thw{font-size:.72rem!important;padding:2px 1px 4px!important;font-weight:700!important;}'+
+'body.__cap .dc{height:42px!important;font-size:1.05rem!important;font-weight:900!important;}'+
+'body.__cap .dck{height:22px!important;font-size:.82rem!important;font-weight:700!important;}'+
+'body.__cap .dcb{height:95px!important;}'+
+'body.__cap .stbl{border-collapse:separate!important;border-spacing:0!important;}'+
+'body.__cap #tc td,body.__cap #tc th{border-right:1px solid #777!important;border-bottom:1px solid #777!important;border-top:none!important;border-left:none!important;}'+
+'body.__cap #tc thead tr:first-child th,body.__cap #tc thead tr:first-child td{border-top:1px solid #777!important;}'+
+'body.__cap #tc td:first-child,body.__cap #tc th:first-child{border-left:1px solid #777!important;}'+
+'body.__cap .busy-ring{width:24px!important;height:50px!important;border-width:3.5px!important;border-radius:12px!important;top:1px!important;}';
+async function generatePDF(){
+  // iOSでは非同期処理後の window.open がブロックされるため、タップ直後に空タブを開いておく
+  let win=null;
+  try{win=window.open('','_blank');if(win)win.document.write('<!doctype html><meta name=viewport content="width=device-width"><title>PDF作成中</title><body style="font-family:sans-serif;padding:24px;color:#333">シフト表のPDFを作成しています…<br>しばらくお待ちください。</body>');}catch(e){}
+  const docEl=document.documentElement;
+  const cap=document.createElement('style');cap.id='__capStyle';cap.textContent=_CAP_CSS;
+  const cleanup=()=>{document.body.classList.remove('__cap');if(cap.parentNode)cap.remove();docEl.style.removeProperty('--nw');docEl.style.removeProperty('--kw');docEl.style.removeProperty('--dw');};
   try{
-    const ua=navigator.userAgent||'';
-    const isIOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-    const standalone=(window.navigator.standalone===true)||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
-    if(isIOS&&standalone){
-      alert('⚠️ ホーム画面に追加したアプリからは印刷できません。\n\nSafari（ブラウザ）でこのページを開き直してから印刷してください。\n\nURL: '+location.href);
-      return;
-    }
-  }catch(e){}
-  try{ window.print(); }catch(e){ alert('印刷を開始できませんでした。Safariで開いて再度お試しください。'); }
+    showToast('📄 PDFを作成中です…');
+    await _ensurePdfLibs();
+    drawChief(CY,CM,'ctw',false);
+    document.getElementById('print-title').textContent='シフト表（'+CM+'月）';
+    const pw=document.getElementById('print-wrap');
+    document.head.appendChild(cap);
+    document.body.classList.add('__cap');
+    const setV=(sc)=>{docEl.style.setProperty('--nw',(76*sc).toFixed(2)+'px');docEl.style.setProperty('--kw',(34*sc).toFixed(2)+'px');docEl.style.setProperty('--dw',(31*sc).toFixed(2)+'px');};
+    setV(1);
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    // A4横の使用領域比率(287:200)に合わせて列幅を広げ、紙面いっぱいに使う
+    const pxH=pw.scrollHeight||1, pxW0=pw.scrollWidth||1;
+    let sc=(pxH*(287/200))/pxW0; sc=Math.max(1,Math.min(sc,1.8));
+    setV(sc);
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    const canvas=await html2canvas(pw,{scale:2,backgroundColor:'#ffffff',useCORS:true,windowWidth:pw.scrollWidth+60,windowHeight:pw.scrollHeight+60});
+    cleanup();
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const pageW=297,pageH=210,m=4;
+    const imgA=canvas.width/canvas.height;
+    let w=pageW-2*m, h=w/imgA;
+    if(h>pageH-2*m){h=pageH-2*m;w=h*imgA;}
+    pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',(pageW-w)/2,(pageH-h)/2,w,h);
+    const fname='シフト表_'+CY+'年'+CM+'月.pdf';
+    const url=URL.createObjectURL(pdf.output('blob'));
+    if(win){win.location.href=url;}
+    else{const a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();}
+    setTimeout(()=>URL.revokeObjectURL(url),120000);
+    showToast('✅ PDFを作成しました');
+  }catch(e){
+    console.warn('PDF作成エラー:',e);
+    cleanup();
+    if(win){try{win.close();}catch(_){}}
+    alert('PDFの作成に失敗しました。通信環境をご確認のうえ、もう一度お試しください。\n'+(e&&e.message?e.message:''));
+  }
 }
 
 // ─── 印刷時：border-collapse:separateで枠線を確実に表示 ───
