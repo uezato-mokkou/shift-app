@@ -324,7 +324,7 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
     <div class="acard">
       <h3>🖨 シフト表出力</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-p bsm" onclick="window.print()">🖨 A4印刷</button>
+        <button class="btn btn-p bsm" onclick="printShift()">🖨 A4印刷</button>
         <button class="btn btn-s bsm" onclick="exportCSV()">📥 CSVダウンロード</button>
       </div>
     </div>
@@ -1433,6 +1433,21 @@ function showToast(msg){
   const t=document.getElementById('toast');t.textContent=msg;
   t.style.transform='translateX(-50%) translateY(0)';
   setTimeout(()=>t.style.transform='translateX(-50%) translateY(70px)',2800);
+}
+
+// ─── 印刷ボタン ───
+function printShift(){
+  // iOSでホーム画面に追加したアプリ(standalone表示)からは window.print() が動作しないため案内する
+  try{
+    const ua=navigator.userAgent||'';
+    const isIOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    const standalone=(window.navigator.standalone===true)||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
+    if(isIOS&&standalone){
+      alert('⚠️ ホーム画面に追加したアプリからは印刷できません。\n\nSafari（ブラウザ）でこのページを開き直してから印刷してください。\n\nURL: '+location.href);
+      return;
+    }
+  }catch(e){}
+  try{ window.print(); }catch(e){ alert('印刷を開始できませんでした。Safariで開いて再度お試しください。'); }
 }
 
 // ─── 印刷時：border-collapse:separateで枠線を確実に表示 ───
