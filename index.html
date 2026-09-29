@@ -1442,13 +1442,19 @@ function _loadScript(src){return new Promise((res,rej)=>{const s=document.create
 let _pdfLibsReady=false;
 async function _ensurePdfLibs(){
   if(_pdfLibsReady)return;
-  await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-  await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  await Promise.race([
+    (async()=>{
+      if(!window.html2canvas)await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+      if(!window.jspdf)await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    })(),
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('部品の読み込みがタイムアウトしました（通信環境をご確認ください）')),15000))
+  ]);
+  if(!window.html2canvas||!window.jspdf)throw new Error('PDF部品を読み込めませんでした');
   _pdfLibsReady=true;
 }
-// キャプチャ用スタイル（@media print と同じ見た目を画面外で再現）
+// キャプチャ用スタイル（@media print と同じ見た目を再現。ローディング画面で覆って撮影する）
 const _CAP_CSS=
-'body.__cap #tc{display:block!important;position:fixed!important;left:-10000px!important;top:0!important;z-index:-1;background:#fff!important;text-align:left!important;}'+
+'body.__cap #tc{display:block!important;background:#fff!important;text-align:left!important;}'+
 'body.__cap #print-wrap{display:block!important;width:max-content!important;margin:0!important;background:#fff!important;padding:0!important;}'+
 'body.__cap #print-hdr{display:flex!important;align-items:baseline;gap:14px;margin:0 0 6px 0!important;}'+
 'body.__cap #print-footer{display:none!important;}body.__cap #toast{display:none!important;}'+
@@ -1459,7 +1465,9 @@ const _CAP_CSS=
 'body.__cap .thw{font-size:.72rem!important;padding:2px 1px 4px!important;font-weight:700!important;}'+
 'body.__cap .dc{height:42px!important;font-size:1.05rem!important;font-weight:900!important;}'+
 'body.__cap .dck{height:22px!important;font-size:.82rem!important;font-weight:700!important;}'+
-'body.__cap .dcb{height:95px!important;}'+
+'body.__cap .dcb{height:95px!important;overflow:visible!important;}'+
+'body.__cap .dcb-inner{overflow:visible!important;}'+
+'body.__cap .hol-name,body.__cap .biko-text{font-size:.6rem!important;max-height:none!important;overflow:visible!important;line-height:1.05!important;}'+
 'body.__cap .stbl{border-collapse:separate!important;border-spacing:0!important;}'+
 'body.__cap #tc td,body.__cap #tc th{border-right:1px solid #777!important;border-bottom:1px solid #777!important;border-top:none!important;border-left:none!important;}'+
 'body.__cap #tc thead tr:first-child th,body.__cap #tc thead tr:first-child td{border-top:1px solid #777!important;}'+
@@ -1467,14 +1475,20 @@ const _CAP_CSS=
 'body.__cap .busy-ring{width:24px!important;height:50px!important;border-width:3.5px!important;border-radius:12px!important;top:1px!important;}';
 async function generatePDF(){
   // iOSでは非同期処理後の window.open がブロックされるため、タップ直後に空タブを開いておく
-  let win=null;
+  let win=null, overlay=null;
   try{win=window.open('','_blank');if(win)win.document.write('<!doctype html><meta name=viewport content="width=device-width"><title>PDF作成中</title><body style="font-family:sans-serif;padding:24px;color:#333">シフト表のPDFを作成しています…<br>しばらくお待ちください。</body>');}catch(e){}
   const docEl=document.documentElement;
   const cap=document.createElement('style');cap.id='__capStyle';cap.textContent=_CAP_CSS;
-  const cleanup=()=>{document.body.classList.remove('__cap');if(cap.parentNode)cap.remove();docEl.style.removeProperty('--nw');docEl.style.removeProperty('--kw');docEl.style.removeProperty('--dw');};
+  const cleanup=()=>{document.body.classList.remove('__cap');if(cap.parentNode)cap.remove();docEl.style.removeProperty('--nw');docEl.style.removeProperty('--kw');docEl.style.removeProperty('--dw');if(overlay&&overlay.parentNode)overlay.remove();};
   try{
-    showToast('📄 PDFを作成中です…');
+    // 画面全体を覆うローディング（撮影中のちらつき防止＋Safari対策で要素を画面内に置いて撮影）
+    overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;background:#ffffff;z-index:100000;display:flex;align-items:center;justify-content:center;font-size:1rem;color:#333;font-weight:700;';
+    overlay.textContent='📄 PDFを作成しています…';
+    document.body.appendChild(overlay);
     await _ensurePdfLibs();
+    // フォント描画完了を待つ（Safariで文字が欠けるのを防ぐ）
+    if(document.fonts&&document.fonts.ready){try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,2500))]);}catch(e){}}
     drawChief(CY,CM,'ctw',false);
     document.getElementById('print-title').textContent='シフト表（'+CM+'月）';
     const pw=document.getElementById('print-wrap');
@@ -1488,7 +1502,11 @@ async function generatePDF(){
     let sc=(pxH*(287/200))/pxW0; sc=Math.max(1,Math.min(sc,1.8));
     setV(sc);
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-    const canvas=await html2canvas(pw,{scale:2,backgroundColor:'#ffffff',useCORS:true,windowWidth:pw.scrollWidth+60,windowHeight:pw.scrollHeight+60});
+    // 撮影（最大20秒で打ち切り、ハングを防ぐ）
+    const canvas=await Promise.race([
+      html2canvas(pw,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false,imageTimeout:4000,windowWidth:pw.scrollWidth+60,windowHeight:pw.scrollHeight+60}),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('画像化がタイムアウトしました')),20000))
+    ]);
     cleanup();
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
