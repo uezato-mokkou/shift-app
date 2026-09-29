@@ -1496,12 +1496,13 @@ async function generatePDF(){
     document.body.classList.add('__cap');
     const setV=(sc)=>{docEl.style.setProperty('--nw',(76*sc).toFixed(2)+'px');docEl.style.setProperty('--kw',(34*sc).toFixed(2)+'px');docEl.style.setProperty('--dw',(31*sc).toFixed(2)+'px');};
     setV(1);
-    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    // レイアウトを同期的に確定させる（rAFはバックグラウンドタブで止まるため使わない）
+    void pw.offsetWidth;
     // A4横の使用領域比率(287:200)に合わせて列幅を広げ、紙面いっぱいに使う
     const pxH=pw.scrollHeight||1, pxW0=pw.scrollWidth||1;
     let sc=(pxH*(287/200))/pxW0; sc=Math.max(1,Math.min(sc,1.8));
     setV(sc);
-    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    void pw.offsetWidth;
     // 撮影（最大20秒で打ち切り、ハングを防ぐ）
     const canvas=await Promise.race([
       html2canvas(pw,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false,imageTimeout:4000,windowWidth:pw.scrollWidth+60,windowHeight:pw.scrollHeight+60}),
