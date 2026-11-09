@@ -273,6 +273,8 @@ header{background:#ffffff;color:var(--dark);padding:7px 12px;display:flex;align-
 .ohana-bath-edit .ohana-label{margin:0;}.ohana-bath-edit .ohana-options{min-width:205px;}
 .ohana-bath-edit input:checked+span{background:#4a6880;border-color:#4a6880;}
 .ohana-error{display:none;color:#b42318;font-size:.75rem;margin-top:5px;}
+.ohana-clear-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:.74rem;color:var(--mid);}
+.ohana-clear-line .btn{min-height:44px;}
 .ohana-save-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:.74rem;color:var(--mid);}
 #ohana-retry{display:none;font:inherit;padding:5px 9px;border:1px solid var(--bd);border-radius:6px;background:#fff;cursor:pointer;}
 @media(max-width:520px){.ohana-fields{grid-template-columns:minmax(0,1fr);gap:12px;}.ohana-bath-edit .ohana-options{width:100%;}}
@@ -438,6 +440,7 @@ body.__cap .ohana-unset,body.__pm .ohana-unset{font-size:.55rem!important;}
             <div class="ohana-state" id="ohana-common-state" aria-live="polite"></div>
           </div>
         </div>
+        <div class="ohana-clear-line"><button type="button" class="btn btn-s bsm" onclick="clearOhanaSelection()">この日を空白にする</button><span>人数と「共用」の表示を消します。</span></div>
         <div class="ohana-bath-edit">
           <span class="ohana-label" id="ohana-bath-label">同じ日の狩俣雄</span>
           <div class="ohana-options" role="group" aria-labelledby="ohana-bath-label">
@@ -1206,14 +1209,15 @@ function buildOhanaRow(y,m,n,editable=false){
   let h='<tr class="ohana-row"><td class="fn">オハナ<span class="ohana-sub">ヘルプ</span></td><td class="fk"></td>';
   for(let d=1;d<=n;d++){
     const value=getOhanaDay(y,m,d),common=isOhanaCommon(y,m,d);
+    const blank=value.count===null&&value.common==='hide';
     const selected=canEdit&&ohanaSelection&&ohanaSelection.y===y&&ohanaSelection.m===m&&ohanaSelection.d===d;
     const cls='dc ohana-cell'+(isSat(y,m,d)?' sat':isHol(y,m,d)?' sun':'')+(canEdit?' ohana-edit':' noclick')+(selected?' ohana-selected':'');
     const attributes=canEdit?' data-ohana-y="'+y+'" data-ohana-m="'+m+'" data-ohana-day="'+d+'"':'';
-    const text=ohanaDayText(y,m,d)||'人数未定';
+    const text=ohanaDayText(y,m,d)||(blank?'空白':'人数未定');
     h+='<td class="'+cls+'"'+attributes+' aria-label="'+m+'月'+d+'日 オハナ '+text+'"><div class="ohana-stack">';
     if(common)h+='<span class="ohana-common">共用</span>';
     if(value.count!==null)h+='<span class="ohana-count'+(String(value.count).length>2?' long':'')+'">'+value.count+'</span>';
-    else h+='<span class="ohana-unset">'+(common?'人数未定':'—')+'</span>';
+    else if(!blank)h+='<span class="ohana-unset">'+(common?'人数未定':'—')+'</span>';
     h+='</div></td>';
   }
   return h+'</tr>';
@@ -1237,11 +1241,12 @@ function renderOhanaEditor(){
   const {y,m,d}=ohanaSelection,value=getOhanaDay(y,m,d),state=getOhanaBathState(y,m,d),nm=getOhanaBathName(y,m);
   document.getElementById('ohana-editor-date').textContent=m+'月'+d+'日（'+WN[getWD(y,m,d)]+'）';
   const input=document.getElementById('ohana-count-input'),next=value.count===null?'':String(value.count);
+  input.placeholder=value.count===null&&value.common==='hide'?'空白':'未定';
   if(input.value!==next&&!input.validity.badInput)input.value=next;
   document.querySelectorAll('input[name="ohana-common"]').forEach(el=>{el.checked=el.value===value.common;});
   document.querySelectorAll('input[name="ohana-bath"]').forEach(el=>{el.checked=state!=='unknown'&&el.value===(state==='on'?'on':'off');el.disabled=!nm;});
   document.getElementById('ohana-bath-label').textContent='同じ日の'+(nm||'狩俣雄');
-  document.getElementById('ohana-common-state').textContent=value.common==='show'?'手動で表示':value.common==='hide'?'手動で非表示':state==='off'?'休みのため自動表示':state==='on'?'出勤のため自動で非表示':'シフト未確定のため自動表示は保留';
+  document.getElementById('ohana-common-state').textContent=value.common==='show'?'手動で表示':value.common==='hide'?(value.count===null?'空白表示':'手動で非表示'):state==='off'?'休みのため自動表示':state==='on'?'出勤のため自動で非表示':'シフト未確定のため自動表示は保留';
   updateOhanaSaveStatus();
 }
 function selectOhanaCell(y,m,d){
@@ -1252,6 +1257,16 @@ function selectOhanaCell(y,m,d){
   input.value=count===null?'':String(count);input.removeAttribute('aria-invalid');
   drawAdjTable();
   document.getElementById('ohana-editor').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function clearOhanaSelection(){
+  if(!isAdmin||!ohanaSelection)return;
+  const {y,m,d}=ohanaSelection;
+  if(y!==CY||m!==CM||!validOhanaDate(y,m,d)||!ohanaReadyMonths.has(ohanaMonthId(y,m)))return;
+  setOhanaDay(y,m,d,{count:null,common:'hide'});
+  const input=document.getElementById('ohana-count-input');
+  input.value='';input.removeAttribute('aria-invalid');
+  document.getElementById('ohana-count-error').style.display='none';
+  drawAdjTable();
 }
 function setOhanaCount(input){
   if(!isAdmin||!ohanaSelection)return;
